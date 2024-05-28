@@ -1,24 +1,44 @@
 from django.db import models
+#机床配置
+class systemConfig(models.Model):
+    machine_id = models.CharField(primary_key=True,max_length=32, null=True)#机床编号
+    machine_name = models.CharField(max_length=32, null=True)#机床名称
+    machine_model=models.CharField(max_length=32, null=True)#机床型号
+    machine_description=models.CharField(max_length=32,null=True)#机床描述
+    manager=models.CharField(max_length=32, null=True)#负责人
+    machine_ip=models.CharField(max_length=32, null=True)#机床ip
+    port_code=models.IntegerField(max_length=32, null=True)#端口号
+    tool_number = models.IntegerField(null=True) #刀位数量
+    database_name = models.CharField(max_length=32, null=True)  #时序数据库名称
+    alarm_data_delay_positive = models.IntegerField(null=True)  #正延时
+    alarm_data_delay_negative = models.IntegerField(null=True)  #负延时
+    submit = models.BooleanField(default=False)  #提交
+    #传感器
+    sensor_id = models.CharField(max_length=32,null=True)#传感器编号
+    sensor_name = models.CharField(max_length=32,null=True)#传感器名称
+    frequency=models.CharField(null=True,max_length=32)#采样频率
+    channel_number=models.IntegerField(null=True)#通道数
+    status=models.BooleanField(default=True)#状态
+    sensor_config=models.BooleanField(default=False)#传感器配置
 
 
-# 系统配置
-class SystemConfiguration(models.Model):
-    machine_ip = models.CharField(max_length=32, null=True)  # 机床ip
-    machine_port = models.CharField(max_length=32, null=True)  # 端口号
-    tool_number = models.IntegerField(null=True)  # 刀位数量
-    vib_serial_port = models.CharField(max_length=32, null=True)  # 振动传感器串口
-    cur_serial_port = models.CharField(max_length=32, null=True)  # 电流传感器串口
-    alarm_cancel_method = models.CharField(max_length=32, null=True)  # 报警取消方式
-    delay_cancel = models.IntegerField(null=True)  # 延时取消-延时
-    io_input_cancel_port = models.IntegerField(null=True)  # IO输入取消-端口
-    alarm_data_delay_positive = models.IntegerField(null=True)  # 报警数据正延时
-    alarm_data_delay_negative = models.IntegerField(null=True)  # 报警数据延时
-    data_save_method = models.CharField(max_length=32, null=True)  # 数据保存方式
-    io_input_save_port = models.IntegerField(null=True)  # IO触发保存端口
-    self_starting = models.BooleanField(default=False)  # 自启动
-    is_apply = models.BooleanField(default=False)  # 应用配置
-    # 监控数量
-    home_monitor_number = models.IntegerField(null=True, default=2000)  # 主页监控数据量
-    learning_monitor_number = models.IntegerField(null=True, default=2000)  # 自适应学习页面监控数据量
-    failure_monitor_number = models.IntegerField(null=True, default=1000)  # 故障监测页面监控数据量
-    database_name = models.CharField(max_length=32, null=True)  # 时序数据库名称
+
+#传感器配置
+class sensorConfig(models.Model):
+    sensor_id = models.CharField(primary_key=True,max_length=32,null=True)#传感器编号
+    sensor_name = models.CharField(max_length=32,null=True)#传感器名称
+    frequency=models.CharField(null=True,max_length=32)#采样频率
+    channel_number=models.IntegerField(null=True)#通道数
+    status=models.BooleanField(default=True)#状态
+#通道配置
+class channelConfig(models.Model):
+    sensor_name = models.CharField(max_length=32, null=True)  #传感器名称
+    channel_name=models.CharField(null=True,max_length=32)#通道名称
+    overrun_times=models.IntegerField(null=True)#超限次数
+    field=models.CharField(null=True)#对应字段
+    monitor=models.BooleanField(default=False)#是否监控
+    user_type=models.ForeignKey(sensorConfig,on_delete=models.CASCADE)#外键
+
+
+
+
