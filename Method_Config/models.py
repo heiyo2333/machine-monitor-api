@@ -11,6 +11,7 @@ class methodConfig(models.Model):
 
 class componentConfig(models.Model):
     id = models.CharField(primary_key=True, max_length=32)  # 部件id
+    machine_number = models.CharField(max_length=32, null=True)  # 机床编号
     machine_name = models.CharField(max_length=32, null=True)  # 机床名称
     component_name = models.CharField(max_length=32, null=True)  # 部件名称
     algorithm_name = models.CharField(max_length=32, null=True)  # 算法名称
