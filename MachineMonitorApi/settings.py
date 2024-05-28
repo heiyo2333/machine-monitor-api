@@ -42,6 +42,8 @@ INSTALLED_APPS = [
     'drf_yasg',  # 配置drf-yasg (API文档生成器)
 
     'System_Config',  # 系统配置
+    'Method_Config',  # 监测信号展示
+    'Equipment_Status',  # 设备运行状态
 ]
 REST_FRAMEWORK = {
     # Use Django's standard `django.contrib.auth` permissions,

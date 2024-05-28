@@ -16,4 +16,16 @@ class componentConfig(models.Model):
     algorithm_name = models.CharField(max_length=32, null=True)
     input_channel = models.CharField(max_length=32, null=True)
     remark = models.CharField(max_length=32, null=True)
-    components = models.ForeignKey()
+    algorithm_id = models.CharField(max_length=32, null=True)
+    sensor_id = models.CharField(max_length=32, null=True)
+    channel_id = models.IntegerField(null=True)
+
+
+class algorithmChannel(models.Model):
+    id = models.IntegerField(primary_key=True)
+    machine_name = models.CharField(max_length=32, null=True)
+    component_name = models.CharField(max_length=32, null=True)
+    algorithm_name = models.CharField(max_length=32, null=True)
+    input_channel = models.CharField(max_length=32, null=True)
+    remark = models.CharField(max_length=32, null=True)
+    algorithm_channel = models.ForeignKey(componentConfig, db_constraint=True, on_delete=models.CASCADE)  # 外键
