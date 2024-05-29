@@ -3,7 +3,7 @@ from rest_framework import serializers
 
 # 新增配置请求
 class ConfigAddSerializer(serializers.Serializer):
-    id = serializers.CharField(help_text="ID")
+    machine_code = serializers.CharField(label="机床编号")
     machine_name = serializers.CharField(help_text="机床名称")
     machine_type = serializers.CharField(help_text="机床型号")
     machine_description = serializers.CharField(help_text="机床描述")
@@ -17,8 +17,8 @@ class ConfigAddSerializer(serializers.Serializer):
 
 #修改配置请求
 class ConfigUpdateSerializer(serializers.Serializer):
-    config_id = serializers.IntegerField(help_text="系统配置id")
-    id = serializers.CharField(help_text="ID")
+    config_id = serializers.IntegerField(help_text="系统配置id", )
+    machine_code = serializers.CharField(label="机床编号")
     machine_name = serializers.CharField(help_text="机床名称")
     machine_type = serializers.CharField(help_text="机床型号")
     machine_description = serializers.CharField(help_text="机床描述")
@@ -46,7 +46,7 @@ class ConfigListSerializer(serializers.Serializer):
 
 #配置信息响应
 class ConfigInformationSerializer(serializers.Serializer):
-    id = serializers.CharField(label="ID")
+    id = serializers.CharField(label="机床编号")
     machine_name = serializers.CharField(label="机床名称")
     machine_type = serializers.CharField(label="机床型号")
     machine_description = serializers.CharField(help_text="机床描述")

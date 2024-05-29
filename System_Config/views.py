@@ -24,12 +24,19 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     @swagger_auto_schema(
         operation_summary='新增配置',
         request_body=serializer.ConfigAddSerializer,
-        responses={200: openapi.Response('successful', serializer.ConfigAddSerializer)},
+        responses={200: openapi.Response('successful', serializer.ConfigAddSerializer), 500: '该id已存在'},
         tags=["config"],
     )
     @action(detail=False, methods=['post'])
     def add(self, request):
         id = self.request.data.get('id')
+        if models.systemConfig.objects.filter(id=id).count() != 0:
+            response = {
+                'status': 500,
+                'message': '该id已存在'
+            }
+            return JsonResponse(response)
+        machine_code = self.request.data.get('machine_code')
         machine_name = self.request.data.get('machine_name')
         machine_type = self.request.data.get('machine_type')
         machine_description = self.request.data.get('machine_description')
@@ -40,7 +47,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         database_name = self.request.data.get('database_name')
         alarm_data_delay_positive = self.request.data.get('alarm_data_delay_positive')
         alarm_data_delay_negative = self.request.data.get('alarm_data_delay_negative')
-        models.systemConfig.objects.create(id=id,
+        models.systemConfig.objects.create(machine_code=machine_code,
                                            machine_name=machine_name,
                                            machine_type=machine_type,
                                            machine_description=machine_description,
@@ -66,7 +73,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['post'])
     def configUpdate(self, request):
         config_id = self.request.data.get('config_id')
-        id = self.request.data.get('id')
+        machine_code = self.request.data.get('machine_code')
         machine_name = self.request.data.get('machine_name')
         machine_type = self.request.data.get('machine_type')
         machine_description = self.request.data.get('machine_description')
@@ -79,7 +86,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         alarm_data_delay_negative = self.request.data.get('alarm_data_delay_negative')
         configuration1 = models.systemConfig.objects.filter(id=config_id)
         configuration2 = models.systemConfig.objects.get(id=config_id)
-        configuration1.update (id=id,
+        configuration1.update(machine_code=machine_code,
                                machine_name=machine_name,
                                machine_type=machine_type,
                                machine_description=machine_description,
@@ -109,7 +116,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         g.is_valid()
         config_id = g.validated_data.get('config_id')
         print(config_id)
-        models.systemConfig.objects.filter(configuration_number_id=config_id).delete()
+        models.systemConfig.objects.filter(id=config_id).delete()
         response = {
             'status': 200,
             'message': '删除配置成功'
@@ -177,11 +184,12 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         tags=["config"],
     )
     @action(detail=False, methods=['get'])
-    def information(self, request):
+    def configDisplay(self, request):
         config_id = self.request.query_params.get("config_id")
         configuration1 = models.systemConfig.objects.get(id=config_id)
         data = {
                 'id':configuration1.id,
+                'machine_code': configuration1.machine_code,
                 'machine_name':configuration1.machine_name,
                 'machine_type':configuration1.machine_type,
                 'machine_description':configuration1.machine_description,
