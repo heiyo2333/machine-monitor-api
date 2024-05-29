@@ -1,6 +1,4 @@
 from django.db import models
-
-
 # 机床配置
 class systemConfig(models.Model):
     id = models.CharField(primary_key=True, max_length=32)  # 机床编号
@@ -14,7 +12,7 @@ class systemConfig(models.Model):
     database_name = models.CharField(max_length=32, null=True)  # 时序数据库名称
     alarm_data_delay_positive = models.IntegerField(null=True)  # 正延时
     alarm_data_delay_negative = models.IntegerField(null=True)  # 负延时
-
+    is_apply = models.BooleanField(default=False)  # 应用配置
 
 # 传感器配置
 class sensorConfig(models.Model):
