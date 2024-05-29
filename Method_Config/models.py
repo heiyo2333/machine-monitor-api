@@ -6,6 +6,7 @@ class methodConfig(models.Model):
     id = models.CharField(primary_key=True, max_length=32)  # 算法id
     algorithm_name = models.CharField(max_length=32, null=True)  # 算法名称
     algorithm_channel_number = models.IntegerField(null=True)  # 算法通道数
+    algorithm_file = models.FileField(upload_to='AlgorithmFile/', null=True)  # 算法文件
     remark = models.CharField(max_length=32, null=True)  # 备注
 
 

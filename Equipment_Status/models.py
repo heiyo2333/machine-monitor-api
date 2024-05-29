@@ -13,10 +13,10 @@ class machineStatus(models.Model):
 
 
 class monitorValue(models.Model):
-    id = models.IntegerField(primary_key=True, max_length=32)  # id
-    value_name = models.CharField(max_length=32, null=False)  # 监测物理量名称
-    value_unit = models.CharField(max_length=32, null=False)  # 物理量单位
-    value = models.IntegerField(max_length=32, null=False)  # 物理量数值
+    id = models.IntegerField(primary_key=True)  # id
+    value_name = models.CharField(null=False, max_length=32)  # 监测物理量名称
+    value_unit = models.CharField(null=False, max_length=32)  # 物理量单位
+    value = models.IntegerField(null=False)  # 物理量数值
 
 
 class faultCode(models.Model):
@@ -38,4 +38,6 @@ class sensorStatus(models.Model):
 
 class thermalDiagram(models.Model):
     id = models.CharField(primary_key=True, max_length=32)  # 机床id
+    machine_number = models.CharField(max_length=32, null=True)  # 机床编号
+    machine_name = models.CharField(max_length=32, null=True)  # 机床名称
     machine_running_time = models.CharField(max_length=32, null=False)  # 机床加工时间
