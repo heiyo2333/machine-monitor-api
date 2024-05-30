@@ -3,6 +3,7 @@ from rest_framework import serializers
 
 # 算法配置：展示序列化器、新增算法序列化器、编辑序列化器
 class AlgorithmSerializer(serializers.Serializer):
+    algorithm_id = serializers.IntegerField(help_text="算法id")
     algorithm_code = serializers.CharField(help_text="算法编号", max_length=32)  # 算法编号
     algorithm_name = serializers.CharField(help_text="算法名称", max_length=32)  # 算法名称
     algorithm_channel_number = serializers.IntegerField(help_text="算法通道数")  # 算法通道数

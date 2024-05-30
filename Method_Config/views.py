@@ -120,18 +120,18 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['post'])
     def methodConfigUpdate(self, request):
+        algorithm_id = request.data.get('algorithm_id')
         algorithm_code = self.request.data.get('algorithm_code')
         algorithm_name = self.request.data.get('algorithm_name')
         algorithm_channel_number = self.request.data.get('algorithm_channel_number')
         remark = self.request.data.get('remark')
         algorithm_file = self.request.data.get('algorithm_file')
-        configuration = models.methodConfig.objects.filter(algorithm_code=algorithm_code)
-        configuration.update(  #algorithm_code=algorithm_code,
-            algorithm_name=algorithm_name,
-            algorithm_channel_number=algorithm_channel_number,
-            remark=remark,
-            algorithm_file=algorithm_file
-        )
+        models.methodConfig.objects.filter(id=algorithm_id).update(algorithm_code=algorithm_code,
+                                                                   algorithm_name=algorithm_name,
+                                                                   algorithm_channel_number=algorithm_channel_number,
+                                                                   remark=remark,
+                                                                   algorithm_file=algorithm_file,
+                                                                   )
         response = {
             'status': 200,
             'message': '编辑算法配置成功'
@@ -243,41 +243,46 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
                                  5: 'null'}
         input_channel1_id = self.request.data.get('input_channel1')
         if input_channel1_id is None:
-            channel_count = channel_count -1
+            channel_count = channel_count - 1
         else:
             channel_id_dictionary[1] = System_Config.models.channelConfig.objects.get(
+                id=input_channel1_id).channel_id
+            channel_name_dictionary[1] = System_Config.models.channelConfig.objects.get(
                 id=input_channel1_id).channel_name
-            channel_name_dictionary[1] = System_Config.models.channelConfig.objects.get(id=input_channel1_id).channel_name
         input_channel2_id = self.request.data.get('input_channel2')
         if input_channel2_id is None:
-            channel_count = channel_count -1
+            channel_count = channel_count - 1
         else:
             channel_id_dictionary[2] = System_Config.models.channelConfig.objects.get(
+                id=input_channel2_id).channel_id
+            channel_name_dictionary[2] = System_Config.models.channelConfig.objects.get(
                 id=input_channel2_id).channel_name
-            channel_name_dictionary[2] = System_Config.models.channelConfig.objects.get(id=input_channel2_id).channel_name
         input_channel3_id = self.request.data.get('input_channel3')
         if input_channel3_id is None:
-            channel_count = channel_count -1
+            channel_count = channel_count - 1
         else:
             channel_id_dictionary[3] = System_Config.models.channelConfig.objects.get(
+                id=input_channel3_id).channel_id
+            channel_name_dictionary[3] = System_Config.models.channelConfig.objects.get(
                 id=input_channel3_id).channel_name
-            channel_name_dictionary[3] = System_Config.models.channelConfig.objects.get(id=input_channel3_id).channel_name
         input_channel4_id = self.request.data.get('input_channel4')
         if input_channel4_id is None:
-            channel_count = channel_count -1
+            channel_count = channel_count - 1
         else:
             channel_id_dictionary[4] = System_Config.models.channelConfig.objects.get(
+                id=input_channel4_id).channel_id
+            channel_name_dictionary[4] = System_Config.models.channelConfig.objects.get(
                 id=input_channel4_id).channel_name
-            channel_name_dictionary[4] = System_Config.models.channelConfig.objects.get(id=input_channel4_id).channel_name
         input_channel5_id = self.request.data.get('input_channel5')
         if input_channel5_id is None:
-            channel_count = channel_count -1
+            channel_count = channel_count - 1
         else:
             channel_id_dictionary[5] = System_Config.models.channelConfig.objects.get(
+                id=input_channel5_id).channel_id
+            channel_name_dictionary[5] = System_Config.models.channelConfig.objects.get(
                 id=input_channel5_id).channel_name
-            channel_name_dictionary[5] = System_Config.models.channelConfig.objects.get(id=input_channel5_id).channel_name
         algorithm_channel = channel_name_dictionary[1]
-        for j in range(2, channel_count+1):
+        for j in range(2, channel_count + 1):
             if channel_name_dictionary[j] is not 'null':
                 algorithm_channel = f'{algorithm_channel}, {channel_name_dictionary[j]}'
         new_Component_config = models.componentConfig.objects.create(config_id=config_id,
@@ -287,76 +292,78 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
                                                                      algorithm_id=algorithm_id,
                                                                      algorithm_name=algorithm_name,
                                                                      algorithm_channel=algorithm_channel,
-                                                                     remark=remark,)
+                                                                     remark=remark, )
 
-        for m in range(1, channel_count+1):
-            channe_id = channel_id_dictionary[m]
-            channel = System_Config.models.channelConfig.objects.get(id=channe_id)
-            models.algorithmChannel.objects.create(sensor_id=channel.channel.channe_id,
+        for m in range(1, channel_count + 1):
+            channel_id = channel_id_dictionary[m]
+            channel = System_Config.models.channelConfig.objects.get(id=channel_id)
+            models.algorithmChannel.objects.create(sensor_id=channel.channel_id,
                                                    sensor_name=channel.sensor_name,
-                                                   channe_id=channe_id,
-                                                   channe_name=channel.name,
-                                                   algorithm_channel_id=new_Component_config.id,)
+                                                   channel_id=channel_id,
+                                                   channel_name=channel.channel_name,
+                                                   algorithm_channel_id=new_Component_config.id, )
         response = {
-            'data': {'id': new_Component_config.id},
             'status': 200,
             'message': '新增部件配置成功'
         }
         return JsonResponse(response)
 
-    # 部件配置 > 删除
-    @swagger_auto_schema(
-        operation_summary='部件配置 > 删除',
-        request_body=serializer.deleteComponentConfigSerializer,
-        responses={200: '删除部件配置成功'},
-        tags=["MethodConfig"],
-    )
-    @action(detail=False, methods=['post'])
-    def deleteComponentConfig(self, request):
-        g = serializer.deleteComponentConfigSerializer(data=request.data)
-        g.is_valid()
-        machine_code = g.validated_data.get('machine_code')
-        print(machine_code)
-        models.componentConfig.objects.filter(machine_code=machine_code).delete()
-        response = {
-            'status': 200,
-            'message': '删除部件配置成功'
-        }
-        return JsonResponse(response)
 
-    # 部件配置 > 编辑
-    @swagger_auto_schema(
-        operation_summary='部件配置 > 编辑',
-        request_body=serializer.componentConfigSerializer,
-        responses={200: '部件配置修改成功'},
-        tags=["MethodConfig"],
-    )
-    @action(detail=False, methods=['post'])
-    def componentConfigUpdate(self, request):
-        machine_code = self.request.data.get('machine_code')
-        machine_name = self.request.data.get('machine_name')
-        component_name = self.request.data.get('component_name')
-        algorithm_name = self.request.data.get('algorithm_name')
-        remark = self.request.data.get('remark')
-        input_channel1 = self.request.data.get('input_channel1')
-        input_channel2 = self.request.data.get('input_channel2')
-        input_channel3 = self.request.data.get('input_channel3')
-        input_channel4 = self.request.data.get('input_channel4')
-        input_channel5 = self.request.data.get('input_channel5')
-        configuration = models.componentConfig.objects.filter(machine_code=machine_code)
-        configuration.update(machine_code=machine_code,
-                             machine_name=machine_name,
-                             component_name=component_name,
-                             algorithm_name=algorithm_name,
-                             remark=remark,
-                             input_channel1=input_channel1,
-                             input_channel2=input_channel2,
-                             input_channel3=input_channel3,
-                             input_channel4=input_channel4,
-                             input_channel5=input_channel5
-                             )
-        response = {
-            'status': 200,
-            'message': '编辑部件配置成功'
-        }
-        return JsonResponse(response)
+    # # 部件配置 > 编辑
+    # @swagger_auto_schema(
+    #     operation_summary='部件配置 > 编辑',
+    #     request_body=serializer.componentConfigSerializer,
+    #     responses={200: '部件配置修改成功'},
+    #     tags=["MethodConfig"],
+    # )
+    # @action(detail=False, methods=['post'])
+    # def componentConfigUpdate(self, request):
+    #     machine_code = self.request.data.get('machine_code')
+    #     machine_name = self.request.data.get('machine_name')
+    #     component_name = self.request.data.get('component_name')
+    #     algorithm_name = self.request.data.get('algorithm_name')
+    #     remark = self.request.data.get('remark')
+    #     input_channel1 = self.request.data.get('input_channel1')
+    #     input_channel2 = self.request.data.get('input_channel2')
+    #     input_channel3 = self.request.data.get('input_channel3')
+    #     input_channel4 = self.request.data.get('input_channel4')
+    #     input_channel5 = self.request.data.get('input_channel5')
+    #     configuration = models.componentConfig.objects.filter(machine_code=machine_code)
+    #     configuration.update(machine_code=machine_code,
+    #                          machine_name=machine_name,
+    #                          component_name=component_name,
+    #                          algorithm_name=algorithm_name,
+    #                          remark=remark,
+    #                          input_channel1=input_channel1,
+    #                          input_channel2=input_channel2,
+    #                          input_channel3=input_channel3,
+    #                          input_channel4=input_channel4,
+    #                          input_channel5=input_channel5
+    #                          )
+    #     response = {
+    #         'status': 200,
+    #         'message': '编辑部件配置成功'
+    #     }
+    #     return JsonResponse(response)
+
+
+    # # 部件配置 > 删除
+    # @swagger_auto_schema(
+    #     operation_summary='部件配置 > 删除',
+    #     request_body=serializer.deleteComponentConfigSerializer,
+    #     responses={200: '删除部件配置成功'},
+    #     tags=["MethodConfig"],
+    # )
+    # @action(detail=False, methods=['post'])
+    # def deleteComponentConfig(self, request):
+    #     g = serializer.deleteComponentConfigSerializer(data=request.data)
+    #     g.is_valid()
+    #     machine_code = g.validated_data.get('machine_code')
+    #     print(machine_code)
+    #     models.componentConfig.objects.filter(machine_code=machine_code).delete()
+    #     response = {
+    #         'status': 200,
+    #         'message': '删除部件配置成功'
+    #     }
+    #     return JsonResponse(response)
+    #
