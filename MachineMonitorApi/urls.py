@@ -23,6 +23,8 @@ from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from rest_framework.documentation import include_docs_urls
 
+from Equipment_Status.views import EquipmentStatusViewSet
+from Method_Config.views import MethodConfigViewSet
 from System_Config.views import SystemConfigViewSet
 
 from django.conf import settings
@@ -43,6 +45,8 @@ schema_view = get_schema_view(
 
 router = routers.DefaultRouter(trailing_slash=False)
 router.register(r'config', SystemConfigViewSet, basename='system-configuration-query')  # 系统配置
+router.register(r'Method_config', MethodConfigViewSet, basename='method_config')  # 监测信号展示
+router.register(r'Equipment_Status', EquipmentStatusViewSet, basename='equipment_status')  # 设备运行状态
 
 
 urlpatterns = [

@@ -1,5 +1,6 @@
 import json
 import serial.tools.list_ports
+from django.db.models import Q
 from django.http import JsonResponse
 from rest_framework import viewsets
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -28,7 +29,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         tags=["config"],
     )
     @action(detail=False, methods=['post'])
-    def add(self, request):
+    def addConfig(self, request):
         id = self.request.data.get('id')
         if models.systemConfig.objects.filter(id=id).count() != 0:
             response = {
@@ -63,6 +64,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             'message': '新增配置成功'
         }
         return JsonResponse(response)
+
     #修改配置
     @swagger_auto_schema(
         operation_summary='修改配置',
@@ -87,16 +89,16 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         configuration1 = models.systemConfig.objects.filter(id=config_id)
         configuration2 = models.systemConfig.objects.get(id=config_id)
         configuration1.update(machine_code=machine_code,
-                               machine_name=machine_name,
-                               machine_type=machine_type,
-                               machine_description=machine_description,
-                               manager=manager,
-                               machine_ip=machine_ip,
-                               machine_port=machine_port,
-                               tool_number=tool_number,
-                               database_name=database_name,
-                               alarm_data_delay_positive=alarm_data_delay_positive,
-                               alarm_data_delay_negative=alarm_data_delay_negative,)
+                              machine_name=machine_name,
+                              machine_type=machine_type,
+                              machine_description=machine_description,
+                              manager=manager,
+                              machine_ip=machine_ip,
+                              machine_port=machine_port,
+                              tool_number=tool_number,
+                              database_name=database_name,
+                              alarm_data_delay_positive=alarm_data_delay_positive,
+                              alarm_data_delay_negative=alarm_data_delay_negative, )
         response = {
             'status': 200,
             'message': '修改配置成功'
@@ -188,19 +190,19 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         config_id = self.request.query_params.get("config_id")
         configuration1 = models.systemConfig.objects.get(id=config_id)
         data = {
-                'id':configuration1.id,
-                'machine_code': configuration1.machine_code,
-                'machine_name':configuration1.machine_name,
-                'machine_type':configuration1.machine_type,
-                'machine_description':configuration1.machine_description,
-                'manager':configuration1.manager,
-                'machine_ip':configuration1.machine_ip,
-                'machine_port':configuration1.machine_port,
-                'tool_number':configuration1.tool_number,
-                'database_name':configuration1.database_name,
-                'alarm_data_delay_positive':configuration1.alarm_data_delay_positive,
-                'alarm_data_delay_negative':configuration1.alarm_data_delay_negative,
-                }
+            'id': configuration1.id,
+            'machine_code': configuration1.machine_code,
+            'machine_name': configuration1.machine_name,
+            'machine_type': configuration1.machine_type,
+            'machine_description': configuration1.machine_description,
+            'manager': configuration1.manager,
+            'machine_ip': configuration1.machine_ip,
+            'machine_port': configuration1.machine_port,
+            'tool_number': configuration1.tool_number,
+            'database_name': configuration1.database_name,
+            'alarm_data_delay_positive': configuration1.alarm_data_delay_positive,
+            'alarm_data_delay_negative': configuration1.alarm_data_delay_negative,
+        }
         response = {
             'data': data,
             'status': 200,
@@ -208,20 +210,175 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         }
         return JsonResponse(response)
 
+    def sensor_get_queryset(self):
+        return models.sensorConfig.objects.all()
 
+    #传感器查询
+    @swagger_auto_schema(
+        operation_summary='传感器 > 查询',
+        # 获取参数
+        manual_parameters=[
 
+            openapi.Parameter('pageSize', openapi.IN_QUERY, description='一页多少条', type=openapi.TYPE_INTEGER,
+                              required=True),
+            openapi.Parameter('current', openapi.IN_QUERY, description='当前页面号', type=openapi.TYPE_INTEGER,
+                              required=True),
+        ],
+        responses={200: openapi.Response('successful', serializer.sensorSerializer)},
+        tags=["sensor"],
+    )
+    @action(detail=False, methods=['get'])
+    def sensorDisplay(self, request):
 
+        pageSize = int(self.request.query_params.get('pageSize'))
+        current = int(self.request.query_params.get('current'))
+        first = (current - 1) * pageSize
+        last = current * pageSize
+        sensor = self.sensor_get_queryset()
+        sensor_magazine_all = sensor.all()[first:last]
+        total = sensor.all().count()
+        result_list = []
+        for x in sensor_magazine_all:
+            result_list.append(
+                {
+                    'sensor_code': x.sensor_code,
+                    'sensor_name': x.sensor_name,
+                    'frequency': x.frequency,
+                    'channel_number': x.channel_number,
+                    'sensor_status': x.sensor_status,
+                    'remark': x.remark
+                }
+            )
+        response_list = {
+            'list': result_list,
+            'total': total,
+        }
+        response = {
+            'data': response_list,
+            'status': 200,
+            'message': 'successful',
+        }
+        return JsonResponse(response)
 
+    #传感器新增
+    @swagger_auto_schema(
+        operation_summary='传感器-新增',
+        request_body=serializer.sensorSerializer,
+        responses={200: openapi.Response('successful', serializer.sensorSerializer), 500: '该id已存在'},
+        tags=["sensor"],
+    )
+    @action(detail=False, methods=['post'])
+    def addSensor(self, request):
+        sensor_code = self.request.data.get('sensor_code')
+        sensor_name = self.request.data.get('sensor_name')
+        frequency = self.request.data.get('frequency')
+        channel_number = self.request.data.get('channel_number')
+        remark = self.request.data.get('remark')
+        models.sensorConfig.objects.create(sensor_code=sensor_code,
+                                           sensor_name=sensor_name,
+                                           frequency=frequency,
+                                           channel_number=channel_number,
+                                           remark=remark
+                                           )
+        response = {
+            'status': 200,
+            'message': '传感器新增成功'
+        }
+        return JsonResponse(response)
 
+    #传感器编辑
+    @swagger_auto_schema(
+        operation_summary='传感器-编辑',
+        request_body=serializer.sensorUpdateserializer,
+        responses={200: 'successful'},
+        tags=["sensor"],
+    )
+    @action(detail=False, methods=['post'])
+    def sensorUpdate(self, request):
+        sensor_code = self.request.data.get('sensor_code')
+        sensor_name = self.request.data.get('sensor_name')
+        frequency = self.request.data.get('frequency')
+        channel_number = self.request.data.get('channel_number')
+        remark = self.request.data.get('remark')
+        configuration1 = models.sensorConfig.objects.filter(sensor_code=sensor_code)
+        configuration2 = models.sensorConfig.objects.get(sensor_code=sensor_code)
+        configuration1.update(sensor_code=sensor_code,
+                              sensor_name=sensor_name,
+                              frequency=frequency,
+                              channel_number=channel_number,
+                              remark=remark
+                              )
+        response = {
+            'status': 200,
+            'message': '修改成功'
+        }
+        return JsonResponse(response)
 
+    #传感器删除
+    @swagger_auto_schema(
+        operation_summary='传感器-删除',
+        request_body=serializer.sensorDeleteserializer,
+        responses={200: '删除成功'},
+        tags=["sensor"],
+    )
+    @action(detail=False, methods=['post'])
+    def delete(self, request):
+        g = serializer.sensorDeleteserializer(data=request.data)
+        g.is_valid()
+        sensor_code = g.validated_data.get('sensor_code')
+        print(sensor_code)
+        models.sensorConfig.objects.filter(sensor_code=sensor_code).delete()
+        response = {
+            'status': 200,
+            'message': '删除成功'
+        }
+        return JsonResponse(response)
 
+    #开始监控
+    @swagger_auto_schema(
+        operation_summary='开始监控',
+        request_body=serializer.monitor_onSerializer,
+        responses={200: '开始监控'},
+        tags=["channel"],
+    )
+    @action(detail=False, methods=['post'])
+    def monitor_on(self, request):
+        is_monitor = self.request.data.get('is_monitor')=='True'
+        channel_name = self.request.data.get('channel_name')
+        configuration1 = models.channelConfig.objects.filter(channel_name=channel_name)
+        #configuration2 = models.channelConfig.objects.get(channel_name=channel_name)
+        configuration1.update(channel_name=channel_name,
+                              is_monitor=is_monitor,
+                              )
+        response = {
+            'status': 200,
+            'message': '开始监控'
+        }
+        return JsonResponse(response)
 
+    #通道配置编辑
+    @swagger_auto_schema(
+        operation_summary='通道配置-编辑',
+        request_body=serializer.channelConfigSerializer,
+        responses={200: 'successful'},
+        tags=["channel"],
+    )
+    @action(detail=False, methods=['post'])
+    def channelConfigupdate(self, request):
+        sensor_name = self.request.data.get('sensor_code')
+        channel_name = self.request.data.get('channel_name')
+        overrun_times = self.request.data.get('overrun_times')
+        channel_field = self.request.data.get('channel_field')
 
-
-
-
-
-
-
+        configuration = models.channelConfig.objects.filter(sensor_name=sensor_name)
+        configuration.update(channel_name=channel_name,
+                              overrun_times=overrun_times,
+                              channel_field=channel_field,
+                              )
+        response = {
+            'status': 200,
+            'message': '修改成功'
+        }
+        return JsonResponse(response)
 
 
