@@ -17,7 +17,7 @@ class systemConfig(models.Model):
 
 # 传感器配置
 class sensorConfig(models.Model):
-    sensor_code = models.CharField(primary_key=True, max_length=32)  # 传感器编号
+    sensor_code = models.CharField(max_length=32)  # 传感器编号
     sensor_name = models.CharField(max_length=32, null=True)  # 传感器名称
     frequency = models.IntegerField(null=True)  # 采样频率
     channel_number = models.IntegerField(null=True)  # 通道数
@@ -27,6 +27,7 @@ class sensorConfig(models.Model):
 
 # 通道配置
 class channelConfig(models.Model):
+
     sensor_name = models.CharField(max_length=32, null=True)  # 传感器名称
     channel_name = models.CharField(null=True, max_length=32)  # 通道名称
     overrun_times = models.IntegerField(null=True)  # 超限次数

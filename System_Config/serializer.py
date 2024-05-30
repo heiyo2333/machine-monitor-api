@@ -71,7 +71,7 @@ class sensorSerializer(serializers.Serializer):
     remark = serializers.CharField(max_length=32, label="备注") #备注
 #传感器新增请求
 class sensorUpdateserializer(serializers.Serializer):
-    id=serializers.CharField(label="id")
+
     sensor_code = serializers.CharField(label="传感器编号", max_length=32)  # 传感器编号
     sensor_name = serializers.CharField(max_length=32, label="传感器名称")  # 传感器名称
     frequency = serializers.IntegerField(label="采样频率")  # 采样频率
@@ -81,14 +81,19 @@ class sensorUpdateserializer(serializers.Serializer):
 #传感器删除请求
 
 class sensorDeleteserializer(serializers.Serializer):
-    id = serializers.CharField(label="id")
-    sensor_code=serializers.CharField(label="传感器编号", max_length=32)
+    id=serializers.CharField(label="id")
+
 
 #开始监控
 class monitor_onSerializer(serializers.Serializer):
-    channel_name =serializers.CharField(label="通道名称", max_length=32)
+    id=serializers.CharField(label="id")
     is_monitor=serializers.BooleanField(label="监控")#开始监控
-    is_monitor=True
+
+#结束监控
+class monitor_offSerializer(serializers.Serializer):
+    id=serializers.CharField(label="id")
+    is_monitor=serializers.BooleanField(label="监控")
+
 
 #通道配置修改
 class channelConfigSerializer(serializers.Serializer):

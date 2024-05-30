@@ -264,8 +264,8 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     #传感器新增
     @swagger_auto_schema(
         operation_summary='传感器-新增',
-        request_body=serializer.sensorSerializer,
-        responses={200: openapi.Response('successful', serializer.sensorSerializer), 500: '该id已存在'},
+        request_body=serializer.sensorUpdateserializer,
+        responses={200: openapi.Response('successful', serializer.sensorUpdateserializer), 500: '该id已存在'},
         tags=["sensor"],
     )
     @action(detail=False, methods=['post'])
@@ -273,14 +273,26 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         sensor_code = self.request.data.get('sensor_code')
         sensor_name = self.request.data.get('sensor_name')
         frequency = self.request.data.get('frequency')
+
         channel_number = self.request.data.get('channel_number')
         remark = self.request.data.get('remark')
-        models.sensorConfig.objects.create(sensor_code=sensor_code,
+        channel_name=self.request.data.get('channel_name')
+        overrun_times=self.request.data.get('overrun_times')
+        channel_field=self.request.data.get('channel_field')
+        sensor_instance=models.sensorConfig.objects.create(sensor_code=sensor_code,
                                            sensor_name=sensor_name,
                                            frequency=frequency,
                                            channel_number=channel_number,
                                            remark=remark
                                            )
+        for m in range(1, int(channel_number) + 1):
+            models.channelConfig.objects.create(
+                                                sensor_name=sensor_name,
+                                                channel_name=f"{channel_name}_{m}",
+                                                overrun_times=overrun_times,
+                                                channel_field=channel_field,
+                                                channel=sensor_instance
+                                                )
         response = {
             'status': 200,
             'message': '传感器新增成功'
@@ -296,6 +308,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['post'])
     def sensorUpdate(self, request):
+        id = self.request.data.get('id')
         sensor_code = self.request.data.get('sensor_code')
         sensor_name = self.request.data.get('sensor_name')
         frequency = self.request.data.get('frequency')
@@ -303,7 +316,8 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         remark = self.request.data.get('remark')
         configuration1 = models.sensorConfig.objects.filter(sensor_code=sensor_code)
         configuration2 = models.sensorConfig.objects.get(sensor_code=sensor_code)
-        configuration1.update(sensor_code=sensor_code,
+        configuration1.update(
+                              sensor_code=sensor_code,
                               sensor_name=sensor_name,
                               frequency=frequency,
                               channel_number=channel_number,
@@ -326,9 +340,9 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     def sensorDelete(self, request):
         g = serializer.sensorDeleteserializer(data=request.data)
         g.is_valid()
-        sensor_code = g.validated_data.get('sensor_code')
-        print(sensor_code)
-        models.sensorConfig.objects.filter(sensor_code=sensor_code).delete()
+        id = g.validated_data.get('id')
+        print(id)
+        models.sensorConfig.objects.filter(id=id).delete()
         response = {
             'status': 200,
             'message': '删除成功'
@@ -344,16 +358,40 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['post'])
     def monitor_on(self, request):
-        is_monitor = self.request.data.get('is_monitor')=='True'
-        channel_name = self.request.data.get('channel_name')
-        configuration1 = models.channelConfig.objects.filter(channel_name=channel_name)
+        is_monitor = self.request.data.get('is_monitor')
+        id = self.request.data.get('id')
+        is_monitor=='True'
+        print(f"id: {id}, is_monitor: {is_monitor}")
+        configuration1 = models.channelConfig.objects.filter(id=id)
         #configuration2 = models.channelConfig.objects.get(channel_name=channel_name)
-        configuration1.update(channel_name=channel_name,
+        configuration1.update(
                               is_monitor=is_monitor,
                               )
         response = {
             'status': 200,
             'message': '开始监控'
+        }
+        return JsonResponse(response)
+
+    #结束监控
+    @swagger_auto_schema(
+        operation_summary='结束监控',
+        request_body=serializer.monitor_offSerializer,
+        responses={200: '结束监控'},
+        tags=["channel"],
+    )
+    @action(detail=False, methods=['post'])
+    def monitor_off(self, request):
+        is_monitor = self.request.data.get('is_monitor') == 'False'
+        id = self.request.data.get('id')
+        configuration1 = models.channelConfig.objects.filter(id=id)
+        # configuration2 = models.channelConfig.objects.get(channel_name=channel_name)
+        configuration1.update(id=id,
+                              is_monitor=is_monitor,
+                              )
+        response = {
+            'status': 200,
+            'message': '结束监控'
         }
         return JsonResponse(response)
 
@@ -381,5 +419,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             'message': '修改成功'
         }
         return JsonResponse(response)
+
+
 
 
