@@ -30,3 +30,4 @@ class algorithmChannel(models.Model):
     input_channel = models.CharField(max_length=32, null=True)  # 算法输入通道
     remark = models.CharField(max_length=32, null=True)  # 备注
     algorithm_channel = models.ForeignKey(componentConfig, db_constraint=True, on_delete=models.CASCADE)  # 外键
+
