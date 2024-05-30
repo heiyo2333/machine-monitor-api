@@ -74,6 +74,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['post'])
     def configUpdate(self, request):
+        id=self.request.data.get('id')
         config_id = self.request.data.get('config_id')
         machine_code = self.request.data.get('machine_code')
         machine_name = self.request.data.get('machine_name')
@@ -89,6 +90,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         configuration1 = models.systemConfig.objects.filter(id=config_id)
         configuration2 = models.systemConfig.objects.get(id=config_id)
         configuration1.update(machine_code=machine_code,
+                              id=id,
                               machine_name=machine_name,
                               machine_type=machine_type,
                               machine_description=machine_description,
@@ -116,9 +118,9 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     def delete(self, request):
         g = serializer.ConfigDeleteSerializer(data=request.data)
         g.is_valid()
-        config_id = g.validated_data.get('config_id')
-        print(config_id)
-        models.systemConfig.objects.filter(id=config_id).delete()
+        id = g.validated_data.get('id')
+        print(id)
+        models.systemConfig.objects.filter(id=id).delete()
         response = {
             'status': 200,
             'message': '删除配置成功'
@@ -139,7 +141,6 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         config_id = h.validated_data.get('config_id')
         models.systemConfig.objects.all().update(is_apply=False)
         models.systemConfig.objects.filter(id=config_id).update(is_apply=True)
-
         response = {
             'status': 200,
             'message': '应用配置成功'}
@@ -322,7 +323,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         tags=["sensor"],
     )
     @action(detail=False, methods=['post'])
-    def delete(self, request):
+    def sensorDelete(self, request):
         g = serializer.sensorDeleteserializer(data=request.data)
         g.is_valid()
         sensor_code = g.validated_data.get('sensor_code')
