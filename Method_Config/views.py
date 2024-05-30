@@ -221,90 +221,56 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['post'])
     def addComponentConfig(self, request):
-        config_id = self.request.data.get('config_id')
-        machine = System_Config.models.systemConfig.objects.get(id=config_id)
-        machine_code = machine.machine_code
-        machine_name = machine.machine_name
+        config_id = self.request.data.get('config_id')  # 重新选择“机床下拉框”返回的“表：系统配置”的id
+        config_X = System_Config.models.systemConfig.objects.get(id=config_id)  # 根据config_id找的"系统配置_X"
+        machine_code = config_X.machine_code  # 根据"系统配置_X"查的机床编号
+        machine_name = config_X.machine_name  # 根据"系统配置X"查的机床名称
 
-        component_name = self.request.data.get('component_name')
-        algorithm_id = self.request.data.get('algorithm_id')
-        algorithm_name = models.methodConfig.objects.get(id=algorithm_id).algorithm_name
-        remark = self.request.data.get('remark')
-        channel_count = 5
-        channel_name_dictionary = {1: 'null',
-                                   2: 'null',
-                                   3: 'null',
-                                   4: 'null',
-                                   5: 'null'}
-        channel_id_dictionary = {1: 'null',
-                                 2: 'null',
-                                 3: 'null',
-                                 4: 'null',
-                                 5: 'null'}
-        input_channel1_id = self.request.data.get('input_channel1')
-        if input_channel1_id is None:
-            channel_count = channel_count - 1
-        else:
-            channel_id_dictionary[1] = System_Config.models.channelConfig.objects.get(
-                id=input_channel1_id).channel_id
-            channel_name_dictionary[1] = System_Config.models.channelConfig.objects.get(
-                id=input_channel1_id).channel_name
-        input_channel2_id = self.request.data.get('input_channel2')
-        if input_channel2_id is None:
-            channel_count = channel_count - 1
-        else:
-            channel_id_dictionary[2] = System_Config.models.channelConfig.objects.get(
-                id=input_channel2_id).channel_id
-            channel_name_dictionary[2] = System_Config.models.channelConfig.objects.get(
-                id=input_channel2_id).channel_name
-        input_channel3_id = self.request.data.get('input_channel3')
-        if input_channel3_id is None:
-            channel_count = channel_count - 1
-        else:
-            channel_id_dictionary[3] = System_Config.models.channelConfig.objects.get(
-                id=input_channel3_id).channel_id
-            channel_name_dictionary[3] = System_Config.models.channelConfig.objects.get(
-                id=input_channel3_id).channel_name
-        input_channel4_id = self.request.data.get('input_channel4')
-        if input_channel4_id is None:
-            channel_count = channel_count - 1
-        else:
-            channel_id_dictionary[4] = System_Config.models.channelConfig.objects.get(
-                id=input_channel4_id).channel_id
-            channel_name_dictionary[4] = System_Config.models.channelConfig.objects.get(
-                id=input_channel4_id).channel_name
-        input_channel5_id = self.request.data.get('input_channel5')
-        if input_channel5_id is None:
-            channel_count = channel_count - 1
-        else:
-            channel_id_dictionary[5] = System_Config.models.channelConfig.objects.get(
-                id=input_channel5_id).channel_id
-            channel_name_dictionary[5] = System_Config.models.channelConfig.objects.get(
-                id=input_channel5_id).channel_name
-        algorithm_channel = channel_name_dictionary[1]
-        for j in range(2, channel_count + 1):
-            if channel_name_dictionary[j] is not 'null':
-                algorithm_channel = f'{algorithm_channel}, {channel_name_dictionary[j]}'
-        new_Component_config = models.componentConfig.objects.create(config_id=config_id,
-                                                                     machine_code=machine_code,
-                                                                     machine_name=machine_name,
-                                                                     component_name=component_name,
-                                                                     algorithm_id=algorithm_id,
-                                                                     algorithm_name=algorithm_name,
-                                                                     algorithm_channel=algorithm_channel,
-                                                                     remark=remark, )
+        component_name = self.request.data.get('component_name')  # 修改的部件名称
+        algorithm_id = self.request.data.get('algorithm_id')  # 重新选择“算法下拉框”返回的“表：算法配置”的id
+        algorithm_X = models.methodConfig.objects.get(id=algorithm_id)  # 根据algorithm_id查的"算法_X"
+        algorithm_name = algorithm_X.algorithm_name  # 根据"算法_X"查的算法名称
+        algorithm_channel_number = algorithm_X.algorithm_channel_number  # 根据"算法_X"查的算法通道数量
+        remark = self.request.data.get('remark')  # 修改的备注
 
-        for m in range(1, channel_count + 1):
+        channel_id_dictionary = {1: 'input_channel1',
+                                 2: 'input_channel2',
+                                 3: 'input_channel3',
+                                 4: 'input_channel4',
+                                 5: 'input_channel5'}
+        channel_name_dictionary = {1: 'input_channel1',
+                                   2: 'input_channel2',
+                                   3: 'input_channel3',
+                                   4: 'input_channel4',
+                                   5: 'input_channel5'}
+        for t in range(1, algorithm_channel_number + 1):
+            channel_id_dictionary[t] = self.request.data.get(channel_id_dictionary[t])
+            channel_name_dictionary[t] = System_Config.models.channelConfig.objects.get(
+                id=channel_id_dictionary[t]).channel_name
+        # 获取字典的前algorithm_channel_number个值并拼接成字符串
+        algorithm_channel = ','.join([channel_name_dictionary[key] for key in
+                                      sorted(channel_name_dictionary.keys())[:algorithm_channel_number]])
+        print('很高的', algorithm_channel)
+        new_component = models.componentConfig.objects.create(config_id=config_id,
+                                                              machine_code=machine_code,
+                                                              machine_name=machine_name,
+                                                              component_name=component_name,
+                                                              algorithm_id=algorithm_id,
+                                                              algorithm_name=algorithm_name,
+                                                              algorithm_channel=algorithm_channel,
+                                                              remark=remark)
+        # 生成对应通道数量的实例
+        for m in range(1, algorithm_channel_number + 1):
             channel_id = channel_id_dictionary[m]
             channel = System_Config.models.channelConfig.objects.get(id=channel_id)
             models.algorithmChannel.objects.create(sensor_id=channel.channel_id,
                                                    sensor_name=channel.sensor_name,
                                                    channel_id=channel_id,
                                                    channel_name=channel.channel_name,
-                                                   algorithm_channel_id=new_Component_config.id, )
+                                                   algorithm_channel_id=new_component.id, )
         response = {
             'status': 200,
-            'message': '新增部件配置成功'
+            'message': '编辑部件配置成功'
         }
         return JsonResponse(response)
 
@@ -317,88 +283,56 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['post'])
     def ComponentConfigUpdate(self, request):
-        id = request.data.get('id')
-        config_id = self.request.data.get('config_id')
-        machine = System_Config.models.systemConfig.objects.get(id=config_id)
-        machine_code = machine.machine_code
-        machine_name = machine.machine_name
+        id = self.request.data.get('id')  # 要修改的那条数据的id
+        config_id = self.request.data.get('config_id')  # 重新选择“机床下拉框”返回的“表：系统配置”的id
+        config_X = System_Config.models.systemConfig.objects.get(id=config_id)  # 根据config_id找的"系统配置_X"
+        machine_code = config_X.machine_code  # 根据"系统配置_X"查的机床编号
+        machine_name = config_X.machine_name  # 根据"系统配置X"查的机床名称
 
-        component_name = self.request.data.get('component_name')
-        algorithm_id = self.request.data.get('algorithm_id')
-        algorithm_name = models.methodConfig.objects.get(id=algorithm_id).algorithm_name
-        remark = self.request.data.get('remark')
-        channel_count = 5
-        channel_name_dictionary = {1: 'null',
-                                   2: 'null',
-                                   3: 'null',
-                                   4: 'null',
-                                   5: 'null'}
-        channel_id_dictionary = {1: 'null',
-                                 2: 'null',
-                                 3: 'null',
-                                 4: 'null',
-                                 5: 'null'}
-        input_channel1_id = self.request.data.get('input_channel1')
-        if input_channel1_id is None:
-            channel_count = channel_count - 1
-        else:
-            channel_id_dictionary[1] = System_Config.models.channelConfig.objects.get(
-                id=input_channel1_id).channel_id
-            channel_name_dictionary[1] = System_Config.models.channelConfig.objects.get(
-                id=input_channel1_id).channel_name
-        input_channel2_id = self.request.data.get('input_channel2')
-        if input_channel2_id is None:
-            channel_count = channel_count - 1
-        else:
-            channel_id_dictionary[2] = System_Config.models.channelConfig.objects.get(
-                id=input_channel2_id).channel_id
-            channel_name_dictionary[2] = System_Config.models.channelConfig.objects.get(
-                id=input_channel2_id).channel_name
-        input_channel3_id = self.request.data.get('input_channel3')
-        if input_channel3_id is None:
-            channel_count = channel_count - 1
-        else:
-            channel_id_dictionary[3] = System_Config.models.channelConfig.objects.get(
-                id=input_channel3_id).channel_id
-            channel_name_dictionary[3] = System_Config.models.channelConfig.objects.get(
-                id=input_channel3_id).channel_name
-        input_channel4_id = self.request.data.get('input_channel4')
-        if input_channel4_id is None:
-            channel_count = channel_count - 1
-        else:
-            channel_id_dictionary[4] = System_Config.models.channelConfig.objects.get(
-                id=input_channel4_id).channel_id
-            channel_name_dictionary[4] = System_Config.models.channelConfig.objects.get(
-                id=input_channel4_id).channel_name
-        input_channel5_id = self.request.data.get('input_channel5')
-        if input_channel5_id is None:
-            channel_count = channel_count - 1
-        else:
-            channel_id_dictionary[5] = System_Config.models.channelConfig.objects.get(
-                id=input_channel5_id).channel_id
-            channel_name_dictionary[5] = System_Config.models.channelConfig.objects.get(
-                id=input_channel5_id).channel_name
-        algorithm_channel = channel_name_dictionary[1]
-        for j in range(2, channel_count + 1):
-            if channel_name_dictionary[j] is not 'null':
-                algorithm_channel = f'{algorithm_channel}, {channel_name_dictionary[j]}'
-        change_Component_config = (models.componentConfig.objects
-                                   .filter(id=id).update(id=id,
-                                                         machine_code=machine_code,
-                                                         machine_name=machine_name,
-                                                         component_name=component_name,
-                                                         algorithm_id=algorithm_id,
-                                                         algorithm_name=algorithm_name,
-                                                         algorithm_channel=algorithm_channel,
-                                                         remark=remark, ))
-        for m in range(1, channel_count + 1):
+        component_name = self.request.data.get('component_name')  # 修改的部件名称
+        algorithm_id = self.request.data.get('algorithm_id')  # 重新选择“算法下拉框”返回的“表：算法配置”的id
+        algorithm_X = models.methodConfig.objects.get(id=algorithm_id)  # 根据algorithm_id查的"算法_X"
+        algorithm_name = algorithm_X.algorithm_name  # 根据"算法_X"查的算法名称
+        algorithm_channel_number = algorithm_X.algorithm_channel_number  # 根据"算法_X"查的算法通道数量
+        remark = self.request.data.get('remark')  # 修改的备注
+
+        channel_id_dictionary = {1: 'input_channel1',
+                                 2: 'input_channel2',
+                                 3: 'input_channel3',
+                                 4: 'input_channel4',
+                                 5: 'input_channel5'}
+        channel_name_dictionary = {1: 'input_channel1',
+                                   2: 'input_channel2',
+                                   3: 'input_channel3',
+                                   4: 'input_channel4',
+                                   5: 'input_channel5'}
+        for t in range(1, algorithm_channel_number + 1):
+            channel_id_dictionary[t] = self.request.data.get(channel_id_dictionary[t])
+            channel_name_dictionary[t] = System_Config.models.channelConfig.objects.get(
+                id=channel_id_dictionary[t]).channel_name
+        # 获取字典的前三个值并拼接成字符串
+        algorithm_channel = ','.join(
+            [channel_name_dictionary[key] for key in sorted(channel_name_dictionary.keys())[:algorithm_channel_number]])
+        change_Component_config = models.componentConfig.objects.filter(id=id)
+        change_Component_config.update(config_id=config_id,
+                                       machine_code=machine_code,
+                                       machine_name=machine_name,
+                                       component_name=component_name,
+                                       algorithm_id=algorithm_id,
+                                       algorithm_name=algorithm_name,
+                                       algorithm_channel=algorithm_channel,
+                                       remark=remark)
+        # 删除附表中外键为该id的实例
+        models.algorithmChannel.objects.filter(algorithm_channel_id=id).delete()
+        # 重新生成对应通道数量的实例
+        for m in range(1, algorithm_channel_number + 1):
             channel_id = channel_id_dictionary[m]
             channel = System_Config.models.channelConfig.objects.get(id=channel_id)
             models.algorithmChannel.objects.create(sensor_id=channel.channel_id,
                                                    sensor_name=channel.sensor_name,
                                                    channel_id=channel_id,
                                                    channel_name=channel.channel_name,
-                                                   algorithm_channel_id=change_Component_config.id, )
+                                                   algorithm_channel_id=id, )
         response = {
             'status': 200,
             'message': '编辑部件配置成功'
