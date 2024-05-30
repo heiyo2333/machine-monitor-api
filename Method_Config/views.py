@@ -167,7 +167,7 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         operation_summary='部件配置 > 查询',
         # 获取参数
         manual_parameters=[
-            openapi.Parameter('id', openapi.IN_QUERY, description='id', type=openapi.TYPE_STRING,
+            openapi.Parameter('id', openapi.IN_QUERY, description='id', type=openapi.TYPE_INTEGER,
                               required=False),
             openapi.Parameter('pageSize', openapi.IN_QUERY, description='一页多少条', type=openapi.TYPE_INTEGER,
                               required=True),
@@ -308,6 +308,102 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         }
         return JsonResponse(response)
 
+    # 部件配置 > 编辑部件
+    @swagger_auto_schema(
+        operation_summary='部件配置 > 编辑部件',
+        request_body=serializer.changeComponentConfigSerializer,
+        responses={200: '编辑部件配置成功'},
+        tags=["MethodConfig"],
+    )
+    @action(detail=False, methods=['post'])
+    def ComponentConfigUpdate(self, request):
+        id = request.data.get('id')
+        config_id = self.request.data.get('config_id')
+        machine = System_Config.models.systemConfig.objects.get(id=config_id)
+        machine_code = machine.machine_code
+        machine_name = machine.machine_name
+
+        component_name = self.request.data.get('component_name')
+        algorithm_id = self.request.data.get('algorithm_id')
+        algorithm_name = models.methodConfig.objects.get(id=algorithm_id).algorithm_name
+        remark = self.request.data.get('remark')
+        channel_count = 5
+        channel_name_dictionary = {1: 'null',
+                                   2: 'null',
+                                   3: 'null',
+                                   4: 'null',
+                                   5: 'null'}
+        channel_id_dictionary = {1: 'null',
+                                 2: 'null',
+                                 3: 'null',
+                                 4: 'null',
+                                 5: 'null'}
+        input_channel1_id = self.request.data.get('input_channel1')
+        if input_channel1_id is None:
+            channel_count = channel_count - 1
+        else:
+            channel_id_dictionary[1] = System_Config.models.channelConfig.objects.get(
+                id=input_channel1_id).channel_id
+            channel_name_dictionary[1] = System_Config.models.channelConfig.objects.get(
+                id=input_channel1_id).channel_name
+        input_channel2_id = self.request.data.get('input_channel2')
+        if input_channel2_id is None:
+            channel_count = channel_count - 1
+        else:
+            channel_id_dictionary[2] = System_Config.models.channelConfig.objects.get(
+                id=input_channel2_id).channel_id
+            channel_name_dictionary[2] = System_Config.models.channelConfig.objects.get(
+                id=input_channel2_id).channel_name
+        input_channel3_id = self.request.data.get('input_channel3')
+        if input_channel3_id is None:
+            channel_count = channel_count - 1
+        else:
+            channel_id_dictionary[3] = System_Config.models.channelConfig.objects.get(
+                id=input_channel3_id).channel_id
+            channel_name_dictionary[3] = System_Config.models.channelConfig.objects.get(
+                id=input_channel3_id).channel_name
+        input_channel4_id = self.request.data.get('input_channel4')
+        if input_channel4_id is None:
+            channel_count = channel_count - 1
+        else:
+            channel_id_dictionary[4] = System_Config.models.channelConfig.objects.get(
+                id=input_channel4_id).channel_id
+            channel_name_dictionary[4] = System_Config.models.channelConfig.objects.get(
+                id=input_channel4_id).channel_name
+        input_channel5_id = self.request.data.get('input_channel5')
+        if input_channel5_id is None:
+            channel_count = channel_count - 1
+        else:
+            channel_id_dictionary[5] = System_Config.models.channelConfig.objects.get(
+                id=input_channel5_id).channel_id
+            channel_name_dictionary[5] = System_Config.models.channelConfig.objects.get(
+                id=input_channel5_id).channel_name
+        algorithm_channel = channel_name_dictionary[1]
+        for j in range(2, channel_count + 1):
+            if channel_name_dictionary[j] is not 'null':
+                algorithm_channel = f'{algorithm_channel}, {channel_name_dictionary[j]}'
+        change_Component_config = (models.componentConfig.objects
+                                   .filter(id=id).update(id=id,
+                                                         machine_code=machine_code,
+                                                         machine_name=machine_name,
+                                                         component_name=component_name,
+                                                         algorithm_id=algorithm_id,
+                                                         algorithm_name=algorithm_name,
+                                                         algorithm_channel=algorithm_channel,
+                                                         remark=remark, ))
+        for m in range(1, channel_count + 1):
+            channel_id = channel_id_dictionary[m]
+            channel = System_Config.models.channelConfig.objects.get(id=channel_id)
+            models.algorithmChannel.objects.create(sensor_id=channel.channel_id,
+                                                   sensor_name=channel.sensor_name,
+                                                   channel_id=channel_id,
+                                                   channel_name=channel.channel_name,
+                                                   algorithm_channel_id=change_Component_config.id, )
+        response = {
+            'status': 200,
+            'message': '编辑部件配置成功'
+        }
+        return JsonResponse(response)
 
     # # 部件配置 > 编辑
     # @swagger_auto_schema(
@@ -345,7 +441,6 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
     #         'message': '编辑部件配置成功'
     #     }
     #     return JsonResponse(response)
-
 
     # # 部件配置 > 删除
     # @swagger_auto_schema(
