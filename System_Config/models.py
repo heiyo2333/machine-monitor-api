@@ -17,11 +17,12 @@ class systemConfig(models.Model):
 
 # 传感器配置
 class sensorConfig(models.Model):
-    id = models.CharField(primary_key=True, max_length=32)  # 传感器编号
+    sensor_code = models.CharField(primary_key=True, max_length=32)  # 传感器编号
     sensor_name = models.CharField(max_length=32, null=True)  # 传感器名称
     frequency = models.IntegerField(null=True)  # 采样频率
     channel_number = models.IntegerField(null=True)  # 通道数
-    sensor_status = models.BooleanField(default=True)  # 状态
+    remark=models.CharField(max_length=32,null=True)# 备注
+    sensor_status = models.BooleanField(default=False)  # 状态
 
 
 # 通道配置
@@ -32,3 +33,11 @@ class channelConfig(models.Model):
     channel_field = models.CharField(max_length=32, null=True)  # 对应字段
     is_monitor = models.BooleanField(default=False)  # 是否监控
     channel = models.ForeignKey(sensorConfig, db_constraint=True, on_delete=models.CASCADE)  # 外键
+
+# class context(models.Model):
+#     name = models.CharField(max_length=4, null=True)  # 名称
+#     value = models.CharField(max_length=4, null=True)  # 值
+#     type = models.CharField(max_length=4, null=True)  # 类型
+
+
+

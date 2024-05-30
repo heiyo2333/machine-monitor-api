@@ -46,7 +46,7 @@ class ConfigListSerializer(serializers.Serializer):
 
 #配置信息响应
 class ConfigInformationSerializer(serializers.Serializer):
-    id = serializers.CharField(label="机床编号")
+    machine_code = serializers.CharField(label="机床编号")
     machine_name = serializers.CharField(label="机床名称")
     machine_type = serializers.CharField(label="机床型号")
     machine_description = serializers.CharField(help_text="机床描述")
@@ -57,4 +57,39 @@ class ConfigInformationSerializer(serializers.Serializer):
     database_name = serializers.CharField(label="时序数据库名称")
     alarm_data_delay_positive = serializers.IntegerField(label="正延时")
     alarm_data_delay_negative = serializers.IntegerField(label="负延时")
+
+#传感器
+class sensorSerializer(serializers.Serializer):
+    sensor_code = serializers.CharField(label="传感器编号", max_length=32)  # 传感器编号
+    sensor_name = serializers.CharField(max_length=32, label="传感器名称")  # 传感器名称
+    frequency = serializers.IntegerField(label="采样频率")  # 采样频率
+    channel_number = serializers.IntegerField(label="通道数")  # 通道数
+    remark = serializers.CharField(max_length=32, label="备注") #备注
+#传感器新增请求
+class sensorUpdateserializer(serializers.Serializer):
+    sensor_code = serializers.CharField(label="传感器编号", max_length=32)  # 传感器编号
+    sensor_name = serializers.CharField(max_length=32, label="传感器名称")  # 传感器名称
+    frequency = serializers.IntegerField(label="采样频率")  # 采样频率
+    channel_number = serializers.IntegerField(label="通道数")  # 通道数
+    remark = serializers.CharField(max_length=32, label="备注")  # 备注
+
+#传感器删除请求
+
+class sensorDeleteserializer(serializers.Serializer):
+    sensor_code=serializers.CharField(label="传感器编号", max_length=32)
+
+#开始监控
+class monitor_onSerializer(serializers.Serializer):
+    channel_name =serializers.CharField(label="通道名称", max_length=32)
+    is_monitor=serializers.BooleanField(label="监控")#开始监控
+    is_monitor=True
+
+#通道配置修改
+class channelConfigSerializer(serializers.Serializer):
+    sensor_name=serializers.CharField(label="传感器名称", max_length=32)
+    channel_name=serializers.CharField(label="通道名称", max_length=32)
+    overrun_times=serializers.IntegerField(label="超限次数")
+    channel_field=serializers.CharField(label="对应字段", max_length=32)
+
+
 

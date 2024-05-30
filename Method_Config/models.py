@@ -29,3 +29,4 @@ class algorithmChannel(models.Model):
     channe_id = models.IntegerField(max_length=32, null=True)  # 通道id
     channe_name = models.CharField(max_length=32, null=True)  # 通道名称
     algorithm_channel = models.ForeignKey(componentConfig, db_constraint=True, on_delete=models.CASCADE)  # 外键
+
