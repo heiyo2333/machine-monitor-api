@@ -7,10 +7,12 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.authentication import BasicAuthentication
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view
+from rest_framework import status
 
 from . import models, serializer
-from .serializer import ConfigListSerializer, ConfigInformationSerializer
+from .serializer import ConfigListSerializer, ConfigInformationSerializer, channelListSerializer
+from .models import sensorConfig,channelConfig
 
 
 class SystemConfigViewSet(viewsets.GenericViewSet):
@@ -48,6 +50,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         database_name = self.request.data.get('database_name')
         alarm_data_delay_positive = self.request.data.get('alarm_data_delay_positive')
         alarm_data_delay_negative = self.request.data.get('alarm_data_delay_negative')
+        machine_image=self.request.data.get('machine_image')
         models.systemConfig.objects.create(machine_code=machine_code,
                                            machine_name=machine_name,
                                            machine_type=machine_type,
@@ -58,7 +61,8 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
                                            tool_number=tool_number,
                                            database_name=database_name,
                                            alarm_data_delay_positive=alarm_data_delay_positive,
-                                           alarm_data_delay_negative=alarm_data_delay_negative, )
+                                           alarm_data_delay_negative=alarm_data_delay_negative,
+                                           machine_image=machine_image)
         response = {
             'status': 200,
             'message': '新增配置成功'
@@ -74,7 +78,6 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['post'])
     def configUpdate(self, request):
-        id=self.request.data.get('id')
         config_id = self.request.data.get('config_id')
         machine_code = self.request.data.get('machine_code')
         machine_name = self.request.data.get('machine_name')
@@ -87,10 +90,11 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         database_name = self.request.data.get('database_name')
         alarm_data_delay_positive = self.request.data.get('alarm_data_delay_positive')
         alarm_data_delay_negative = self.request.data.get('alarm_data_delay_negative')
+        machine_image=self.request.data.get('machine_image')
         configuration1 = models.systemConfig.objects.filter(id=config_id)
         configuration2 = models.systemConfig.objects.get(id=config_id)
-        configuration1.update(machine_code=machine_code,
-                              id=id,
+        configuration1.update(config_id=config_id,
+                              machine_code=machine_code,
                               machine_name=machine_name,
                               machine_type=machine_type,
                               machine_description=machine_description,
@@ -100,7 +104,8 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
                               tool_number=tool_number,
                               database_name=database_name,
                               alarm_data_delay_positive=alarm_data_delay_positive,
-                              alarm_data_delay_negative=alarm_data_delay_negative, )
+                              alarm_data_delay_negative=alarm_data_delay_negative,
+                              machine_image=machine_image)
         response = {
             'status': 200,
             'message': '修改配置成功'
@@ -138,7 +143,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     def apply(self, request):
         h = serializer.ConfigDeleteSerializer(data=request.data)
         h.is_valid()
-        config_id = h.validated_data.get('config_id')
+        config_id = h.validated_data.get('id')
         models.systemConfig.objects.all().update(is_apply=False)
         models.systemConfig.objects.filter(id=config_id).update(is_apply=True)
         response = {
@@ -203,6 +208,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             'database_name': configuration1.database_name,
             'alarm_data_delay_positive': configuration1.alarm_data_delay_positive,
             'alarm_data_delay_negative': configuration1.alarm_data_delay_negative,
+            'machine_image':configuration1.machine_image
         }
         response = {
             'data': data,
@@ -265,7 +271,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     @swagger_auto_schema(
         operation_summary='传感器-新增',
         request_body=serializer.sensorUpdateserializer,
-        responses={200: openapi.Response('successful', serializer.sensorUpdateserializer), 500: '该id已存在'},
+        responses={200: openapi.Response('successful', serializer.sensorUpdateserializer), 500: '错误'},
         tags=["sensor"],
     )
     @action(detail=False, methods=['post'])
@@ -292,6 +298,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
                                                 overrun_times=overrun_times,
                                                 channel_field=channel_field,
                                                 channel=sensor_instance
+
                                                 )
         response = {
             'status': 200,
@@ -358,19 +365,39 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['post'])
     def monitor_on(self, request):
-        is_monitor = self.request.data.get('is_monitor')
-        id = self.request.data.get('id')
-        is_monitor=='True'
-        print(f"id: {id}, is_monitor: {is_monitor}")
-        configuration1 = models.channelConfig.objects.filter(id=id)
-        #configuration2 = models.channelConfig.objects.get(channel_name=channel_name)
-        configuration1.update(
-                              is_monitor=is_monitor,
-                              )
-        response = {
-            'status': 200,
-            'message': '开始监控'
-        }
+        h = serializer.monitor_onSerializer(data=request.data)
+        h.is_valid()
+        id = h.validated_data.get('id')
+        # 检查记录是否已经在监控状态
+        try:
+            channel = models.channelConfig.objects.get(id=id)
+            if channel.is_monitor:
+                response = {
+                    'status': 400,
+                    'message': '该通道已经在监控状态'
+                }
+                return JsonResponse(response)
+            else:
+                # 更新记录为监控状态
+                channel.is_monitor = True
+                channel.save()
+                response = {
+                    'status': 200,
+                    'message': '开始监控成功'
+                }
+                return JsonResponse(response)
+        except models.channelConfig.DoesNotExist:
+            response = {
+                'status': 404,
+                'message': '未找到该通道'
+            }
+            return JsonResponse(response)
+
+        else:
+            response = {
+                'status': 400,
+                'message': '无效的数据'
+    }
         return JsonResponse(response)
 
     #结束监控
@@ -382,17 +409,37 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['post'])
     def monitor_off(self, request):
-        is_monitor = self.request.data.get('is_monitor') == 'False'
-        id = self.request.data.get('id')
-        configuration1 = models.channelConfig.objects.filter(id=id)
-        # configuration2 = models.channelConfig.objects.get(channel_name=channel_name)
-        configuration1.update(id=id,
-                              is_monitor=is_monitor,
-                              )
-        response = {
-            'status': 200,
-            'message': '结束监控'
-        }
+        h = serializer.monitor_offSerializer(data=request.data)
+        h.is_valid()
+        id = h.validated_data.get('id')
+        try:
+            channel = models.channelConfig.objects.get(id=id)
+            if not channel.is_monitor:
+                response = {
+                    'status': 400,
+                    'message': '该通道已经处于非监控状态'
+                }
+                return JsonResponse(response)
+            else:
+                # 更新记录为非监控状态
+                channel.is_monitor = False
+                channel.save()
+                response = {
+                    'status': 200,
+                    'message': '结束监控成功'
+                }
+                return JsonResponse(response)
+        except models.channelConfig.DoesNotExist:
+            response = {
+                'status': 404,
+                'message': '未找到该通道'
+            }
+            return JsonResponse(response)
+        else:
+            response = {
+                'status': 400,
+                'message': '无效的数据'
+            }
         return JsonResponse(response)
 
     #通道配置编辑
@@ -419,6 +466,45 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             'message': '修改成功'
         }
         return JsonResponse(response)
+
+    #通道配置显示
+    @swagger_auto_schema(
+        operation_summary='通道配置-显示',
+        # 获取参数
+        manual_parameters=[
+            openapi.Parameter('sensor_code', openapi.IN_QUERY, description='传感器编号',
+                              type=openapi.TYPE_STRING,
+                              required=True),
+        ],
+        responses={200: openapi.Response('传感器通道配置信息', channelListSerializer)},
+        tags=["channel"],
+    )
+    @action(detail=False, methods=['get'])
+    def channelDisplay(self, request):
+        sensor_code = self.request.query_params.get("sensor_code")
+        configuration = models.sensorConfig.objects.get(sensor_code=sensor_code)
+        channel_info = configuration.channelconfig_set.all()
+        list=[]
+        for channel in channel_info:
+            print(channel.channel_name)
+            list.append({
+                'sensor_name': channel.sensor_name,
+                'channel_name': channel.channel_name,
+                'overrun_times':channel.overrun_times,
+                'channel_field':channel.channel_field,
+                'is_monitor':channel.is_monitor,
+            })
+        response = {
+            'list':list,
+            'status': 200,
+            'message': '通道配置信息',
+        }
+        return JsonResponse(response)
+
+
+
+
+
 
 
 
