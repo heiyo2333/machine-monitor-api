@@ -17,6 +17,7 @@ class deleteAlgorithmSerializer(serializers.Serializer):
 
 # 部件配置：查询部件请求序列化器、删除部件请求序列化器
 class deleteComponentConfigSerializer(serializers.Serializer):
+    id = serializers.IntegerField(label="部件配置表id")
     machine_code = serializers.CharField(label="机床编号", max_length=32)  # 机床编号
 
 
@@ -51,3 +52,8 @@ class changeComponentConfigSerializer(serializers.Serializer):
 class machineSelectSerializer(serializers.Serializer):
     machine_code = serializers.CharField(label="机床编号", max_length=32)  # 机床编号
     machine_name = serializers.CharField(label="机床名称", max_length=32)  # 机床名称
+
+
+# 部件配置：算法输入通道1、2、3 > 通道选择下拉框请求序列化器
+class sensorChannelSerializer(serializers.Serializer):
+    id = serializers.IntegerField(label="传感器配置表id")

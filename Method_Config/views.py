@@ -162,6 +162,113 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         }
         return JsonResponse(response)
 
+    # 部件配置 > 部件选择下拉框
+    @swagger_auto_schema(operation_summary='部件配置 > 部件选择下拉框',
+                         # 获取参数
+                         manual_parameters=[
+                             openapi.Parameter('id', openapi.IN_QUERY, description='部件配置表id',
+                                               type=openapi.TYPE_INTEGER, required=True),
+                         ],
+                         responses={200: openapi.Response('successful', serializer.componentConfigSerializer)},
+                         tags=["MethodConfig"], )
+    @action(detail=False, methods=['get'])
+    def componentSelect(self, request):
+        systemConfig_id = self.request.query_params.get('id')
+        component_Config = models.componentConfig.objects.filter(config_id=systemConfig_id)
+        request_list = []
+        for i in component_Config:
+            request_list.append({
+                'id': i.id,
+                'machine_name': i.machine_name,
+                'component_name': i.component_name,
+            })
+        response_list = {
+            'list': request_list,
+        }
+        response = {
+            'data': response_list,
+            'message': 'Successful',
+            'status': 200,
+        }
+        return JsonResponse(response)
+
+    # 部件配置 > 算法选择下拉框
+    @swagger_auto_schema(operation_summary='部件配置 > 算法选择下拉框',
+                         responses={200: 'Successful'},
+                         tags=["MethodConfig"], )
+    @action(detail=False, methods=['get'])
+    def methodSelect(self, request):
+        query = models.methodConfig.objects.all()
+        request_list = []
+        for i in query:
+            request_list.append({
+                'id': i.id,
+                'algorithm_name': i.algorithm_name,
+            })
+        response_list = {
+            'list': request_list,
+        }
+        response = {
+            'data': response_list,
+            'message': 'Successful',
+            'status': 200,
+        }
+        return JsonResponse(response)
+
+    # 部件配置 > 算法输入通道1、2、3 > 传感器选择下拉框
+    @swagger_auto_schema(operation_summary='部件配置 > 算法输入通道1、2、3 > 传感器选择下拉框',
+                         responses={200: 'Successful'},
+                         tags=["MethodConfig"], )
+    @action(detail=False, methods=['get'])
+    def sensorSelect(self, request):
+        sensor = System_Config.models.sensorConfig.objects.all()
+        request_list = []
+        for i in sensor:
+            request_list.append({
+                'id': i.id,
+                'sensor_code': i.sensor_code,
+                'sensor_name': i.sensor_name,
+            })
+        response_list = {
+            'list': request_list,
+        }
+        response = {
+            'data': response_list,
+            'message': 'Successful',
+            'status': 200,
+        }
+        return JsonResponse(response)
+
+    # 部件配置 > 算法输入通道1、2、3 > 通道选择下拉框
+    @swagger_auto_schema(operation_summary='部件配置 > 算法输入通道1、2、3 > 通道选择下拉框',
+                         # 获取参数
+                         manual_parameters=[
+                             openapi.Parameter('id', openapi.IN_QUERY, description='传感器id',
+                                               type=openapi.TYPE_INTEGER, required=True),
+                         ],
+                         responses={200: openapi.Response('successful', serializer.sensorChannelSerializer)},
+                         tags=["MethodConfig"], )
+    @action(detail=False, methods=['get'])
+    def channelSelect(self, request):
+        sensor_id = self.request.query_params.get('id')
+        channel = System_Config.models.channelConfig.objects.filter(channel_id=sensor_id)
+        request_list = []
+        for i in channel:
+            request_list.append({
+                'id': i.id,
+                'sensor_name': i.sensor_name,
+                'channel_name': i.channel_name,
+            })
+        response_list = {
+            'list': request_list,
+        }
+        response = {
+            'data': response_list,
+            'message': 'Successful',
+            'status': 200,
+        }
+        return JsonResponse(response)
+
     # 部件配置 > 查询
     @swagger_auto_schema(
         operation_summary='部件配置 > 查询',
@@ -222,7 +329,7 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['post'])
     def addComponentConfig(self, request):
         config_id = self.request.data.get('config_id')  # 重新选择“机床下拉框”返回的“表：系统配置”的id
-        config_X = System_Config.models.systemConfig.objects.get(id=config_id)  # 根据config_id找的"系统配置_X"
+        config_X = System_Config.models.systemConfig.objects.get(id=config_id)  # 根据config_id找的"系统配置_X"的一行数据
         machine_code = config_X.machine_code  # 根据"系统配置_X"查的机床编号
         machine_name = config_X.machine_name  # 根据"系统配置X"查的机床名称
 
@@ -248,9 +355,10 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
             channel_name_dictionary[t] = System_Config.models.channelConfig.objects.get(
                 id=channel_id_dictionary[t]).channel_name
         # 获取字典的前algorithm_channel_number个值并拼接成字符串
-        algorithm_channel = ','.join([channel_name_dictionary[key] for key in
-                                      sorted(channel_name_dictionary.keys())[:algorithm_channel_number]])
-        print('很高的', algorithm_channel)
+        # algorithm_channel = ','.join([channel_name_dictionary[key] for key in
+        #                               sorted(channel_name_dictionary.keys())[:algorithm_channel_number]])
+        algorithm_channel = ','.join(channel_name_dictionary[t] for t in range(1, algorithm_channel_number + 1))
+        print('运行成功', algorithm_channel)
         new_component = models.componentConfig.objects.create(config_id=config_id,
                                                               machine_code=machine_code,
                                                               machine_name=machine_name,
@@ -270,7 +378,7 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
                                                    algorithm_channel_id=new_component.id, )
         response = {
             'status': 200,
-            'message': '编辑部件配置成功'
+            'message': '新增部件配置成功'
         }
         return JsonResponse(response)
 
@@ -311,9 +419,11 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
             channel_name_dictionary[t] = System_Config.models.channelConfig.objects.get(
                 id=channel_id_dictionary[t]).channel_name
         # 获取字典的前三个值并拼接成字符串
-        algorithm_channel = ','.join(
-            [channel_name_dictionary[key] for key in sorted(channel_name_dictionary.keys())[:algorithm_channel_number]])
+        # algorithm_channel = ','.join(
+        #      [channel_name_dictionary[key] for key in sorted(channel_name_dictionary.keys())[:algorithm_channel_number]])
+        algorithm_channel = ','.join(channel_name_dictionary[t] for t in range(1, algorithm_channel_number + 1))
         change_Component_config = models.componentConfig.objects.filter(id=id)
+        print(change_Component_config.count())
         change_Component_config.update(config_id=config_id,
                                        machine_code=machine_code,
                                        machine_name=machine_name,
@@ -323,7 +433,7 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
                                        algorithm_channel=algorithm_channel,
                                        remark=remark)
         # 删除附表中外键为该id的实例
-        models.algorithmChannel.objects.filter(algorithm_channel_id=id).delete()
+        # models.algorithmChannel.objects.filter(algorithm_channel_id=id).delete()
         # 重新生成对应通道数量的实例
         for m in range(1, algorithm_channel_number + 1):
             channel_id = channel_id_dictionary[m]
@@ -339,60 +449,23 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         }
         return JsonResponse(response)
 
-    # # 部件配置 > 编辑
-    # @swagger_auto_schema(
-    #     operation_summary='部件配置 > 编辑',
-    #     request_body=serializer.componentConfigSerializer,
-    #     responses={200: '部件配置修改成功'},
-    #     tags=["MethodConfig"],
-    # )
-    # @action(detail=False, methods=['post'])
-    # def componentConfigUpdate(self, request):
-    #     machine_code = self.request.data.get('machine_code')
-    #     machine_name = self.request.data.get('machine_name')
-    #     component_name = self.request.data.get('component_name')
-    #     algorithm_name = self.request.data.get('algorithm_name')
-    #     remark = self.request.data.get('remark')
-    #     input_channel1 = self.request.data.get('input_channel1')
-    #     input_channel2 = self.request.data.get('input_channel2')
-    #     input_channel3 = self.request.data.get('input_channel3')
-    #     input_channel4 = self.request.data.get('input_channel4')
-    #     input_channel5 = self.request.data.get('input_channel5')
-    #     configuration = models.componentConfig.objects.filter(machine_code=machine_code)
-    #     configuration.update(machine_code=machine_code,
-    #                          machine_name=machine_name,
-    #                          component_name=component_name,
-    #                          algorithm_name=algorithm_name,
-    #                          remark=remark,
-    #                          input_channel1=input_channel1,
-    #                          input_channel2=input_channel2,
-    #                          input_channel3=input_channel3,
-    #                          input_channel4=input_channel4,
-    #                          input_channel5=input_channel5
-    #                          )
-    #     response = {
-    #         'status': 200,
-    #         'message': '编辑部件配置成功'
-    #     }
-    #     return JsonResponse(response)
+    # 部件配置 > 删除部件
+    @swagger_auto_schema(
+        operation_summary='部件配置 > 删除部件',
+        request_body=serializer.deleteComponentConfigSerializer,
+        responses={200: '删除部件配置成功'},
+        tags=["MethodConfig"],
+    )
+    @action(detail=False, methods=['post'])
+    def ComponentConfigDelete(self, request):
+        id = self.request.data.get('id')  # 要删除的那条数据的id
+        # 删除部件配置表对应id的实例
+        models.componentConfig.objects.filter(id=id).delete()
+        # 删除附表中外键为该id的实例
+        models.algorithmChannel.objects.filter(algorithm_channel_id=id).delete()
 
-    # # 部件配置 > 删除
-    # @swagger_auto_schema(
-    #     operation_summary='部件配置 > 删除',
-    #     request_body=serializer.deleteComponentConfigSerializer,
-    #     responses={200: '删除部件配置成功'},
-    #     tags=["MethodConfig"],
-    # )
-    # @action(detail=False, methods=['post'])
-    # def deleteComponentConfig(self, request):
-    #     g = serializer.deleteComponentConfigSerializer(data=request.data)
-    #     g.is_valid()
-    #     machine_code = g.validated_data.get('machine_code')
-    #     print(machine_code)
-    #     models.componentConfig.objects.filter(machine_code=machine_code).delete()
-    #     response = {
-    #         'status': 200,
-    #         'message': '删除部件配置成功'
-    #     }
-    #     return JsonResponse(response)
-    #
+        response = {
+            'status': 200,
+            'message': '编辑部件配置成功'
+        }
+        return JsonResponse(response)
