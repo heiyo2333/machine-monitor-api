@@ -1,7 +1,11 @@
 import json
+import os
+
 import serial.tools.list_ports
+from django.core.files.base import ContentFile
 from django.db.models import Q
 from django.http import JsonResponse
+from django.utils.crypto import get_random_string
 from rest_framework import viewsets
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.authentication import BasicAuthentication
@@ -11,7 +15,7 @@ from rest_framework.decorators import action, api_view
 from rest_framework import status
 
 from . import models, serializer
-from .serializer import ConfigListSerializer, ConfigInformationSerializer, channelListSerializer
+from .serializer import ConfigListSerializer, ConfigInformationSerializer, channelListSerializer, ConfigUpdateSerializer
 from .models import sensorConfig,channelConfig
 
 
@@ -78,39 +82,57 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['post'])
     def configUpdate(self, request):
-        config_id = self.request.data.get('config_id')
-        machine_code = self.request.data.get('machine_code')
-        machine_name = self.request.data.get('machine_name')
-        machine_type = self.request.data.get('machine_type')
-        machine_description = self.request.data.get('machine_description')
-        manager = self.request.data.get('manager')
-        machine_ip = self.request.data.get('machine_ip')
-        machine_port = self.request.data.get('machine_port')
-        tool_number = self.request.data.get('tool_number')
-        database_name = self.request.data.get('database_name')
-        alarm_data_delay_positive = self.request.data.get('alarm_data_delay_positive')
-        alarm_data_delay_negative = self.request.data.get('alarm_data_delay_negative')
-        machine_image=self.request.data.get('machine_image')
-        configuration1 = models.systemConfig.objects.filter(id=config_id)
-        configuration2 = models.systemConfig.objects.get(id=config_id)
-        configuration1.update(config_id=config_id,
-                              machine_code=machine_code,
-                              machine_name=machine_name,
-                              machine_type=machine_type,
-                              machine_description=machine_description,
-                              manager=manager,
-                              machine_ip=machine_ip,
-                              machine_port=machine_port,
-                              tool_number=tool_number,
-                              database_name=database_name,
-                              alarm_data_delay_positive=alarm_data_delay_positive,
-                              alarm_data_delay_negative=alarm_data_delay_negative,
-                              machine_image=machine_image)
-        response = {
-            'status': 200,
-            'message': '修改配置成功'
-        }
-        return JsonResponse(response)
+        serializer = ConfigUpdateSerializer(data=request.data)
+        if serializer.is_valid():
+            config_id = serializer.validated_data['config_id']
+            machine_code = serializer.validated_data['machine_code']
+            machine_name = serializer.validated_data['machine_name']
+            machine_type = serializer.validated_data['machine_type']
+            machine_description = serializer.validated_data['machine_description']
+            manager = serializer.validated_data['manager']
+            machine_ip = serializer.validated_data['machine_ip']
+            machine_port = serializer.validated_data['machine_port']
+            tool_number = serializer.validated_data['tool_number']
+            database_name = serializer.validated_data['database_name']
+            alarm_data_delay_positive = serializer.validated_data['alarm_data_delay_positive']
+            alarm_data_delay_negative = serializer.validated_data['alarm_data_delay_negative']
+            machine_image = serializer.validated_data.get('machine_image')
+
+            learning_file = models.systemConfig.objects.get(id=config_id)
+            # 更新图片文件
+            if machine_image:
+                # 删除现有文件
+                if learning_file.machine_image and os.path.isfile(learning_file.machine_image.path):
+                    os.remove(learning_file.machine_image.path)
+
+                # 生成新的文件名
+                _, file_extension = os.path.splitext(machine_image.name)
+                new_image_name = f"{learning_file.machine_code}-机床-{get_random_string(8)}{file_extension}"
+
+
+                # 保存新的图片文件
+                learning_file.machine_image.save(new_image_name,ContentFile(machine_image.read()), save=True)
+
+            # 更新其他字段
+            learning_file.machine_code = machine_code
+            learning_file.machine_name = machine_name
+            learning_file.machine_type = machine_type
+            learning_file.machine_description = machine_description
+            learning_file.manager = manager
+            learning_file.machine_ip = machine_ip
+            learning_file.machine_port = machine_port
+            learning_file.tool_number = tool_number
+            learning_file.database_name = database_name
+            learning_file.alarm_data_delay_positive = alarm_data_delay_positive
+            learning_file.alarm_data_delay_negative = alarm_data_delay_negative
+            learning_file.save()
+
+            response = {
+                'status': 200,
+                'message': '修改配置成功'
+            }
+            return JsonResponse(response)
+
 
     # 删除配置
     @swagger_auto_schema(
