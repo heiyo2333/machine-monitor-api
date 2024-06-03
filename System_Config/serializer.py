@@ -1,5 +1,5 @@
 from rest_framework import serializers
-
+from System_Config.models import sensorConfig
 
 # 新增配置请求
 class ConfigAddSerializer(serializers.Serializer):
@@ -38,7 +38,7 @@ class ConfigDeleteSerializer(serializers.Serializer):
 
 # 应用配置请求
 class ConfigApplySerializer(serializers.Serializer):
-    config_id = serializers.IntegerField(help_text="系统配置id", )
+    id=serializers.CharField(help_text="ID")
 
 #配置列表响应
 class ConfigListSerializer(serializers.Serializer):
@@ -87,12 +87,12 @@ class sensorDeleteserializer(serializers.Serializer):
 #开始监控
 class monitor_onSerializer(serializers.Serializer):
     id=serializers.CharField(label="id")
-    is_monitor=serializers.BooleanField(label="监控")#开始监控
+
 
 #结束监控
 class monitor_offSerializer(serializers.Serializer):
     id=serializers.CharField(label="id")
-    is_monitor=serializers.BooleanField(label="监控")
+
 
 
 #通道配置修改
@@ -102,6 +102,17 @@ class channelConfigSerializer(serializers.Serializer):
     channel_name=serializers.CharField(label="通道名称", max_length=32)
     overrun_times=serializers.IntegerField(label="超限次数")
     channel_field=serializers.CharField(label="对应字段", max_length=32)
+
+
+#通道配置显示
+class channelListSerializer(serializers.Serializer):
+    sensor_code=serializers.CharField(label="传感器编号", max_length=32)
+    sensor_name = serializers.CharField(label="传感器名称", max_length=32)
+    channel_name = serializers.CharField(label="通道名称", max_length=32)
+    overrun_times = serializers.IntegerField(label="超限次数")
+    channel_field = serializers.CharField(label="对应字段", max_length=32)
+    is_monitor=serializers.BooleanField(label="是否监控")
+
 
 
 
