@@ -15,6 +15,7 @@ class systemConfig(models.Model):
     alarm_data_delay_positive = models.IntegerField(null=True)  # 正延时
     alarm_data_delay_negative = models.IntegerField(null=True)  # 负延时
     is_apply = models.BooleanField(default=0)  # 应用配置
+    machine_image = models.ImageField(null=True, upload_to='MachineImage/')  #机床图片
 
 
 # 传感器配置

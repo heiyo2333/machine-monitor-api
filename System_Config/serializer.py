@@ -14,6 +14,7 @@ class ConfigAddSerializer(serializers.Serializer):
     database_name = serializers.CharField(help_text="时序数据库名称")
     alarm_data_delay_positive = serializers.IntegerField(help_text="正延时")
     alarm_data_delay_negative = serializers.IntegerField(help_text="负延时")
+    machine_image = serializers.ImageField(help_text="机床图片")
 
 #修改配置请求
 class ConfigUpdateSerializer(serializers.Serializer):
@@ -30,6 +31,7 @@ class ConfigUpdateSerializer(serializers.Serializer):
     database_name = serializers.CharField(help_text="时序数据库名称")
     alarm_data_delay_positive = serializers.IntegerField(help_text="正延时")
     alarm_data_delay_negative = serializers.IntegerField(help_text="负延时")
+    machine_image=serializers.ImageField(help_text="机床图片")
 
 #删除配置请求
 class ConfigDeleteSerializer(serializers.Serializer):
@@ -60,7 +62,7 @@ class ConfigInformationSerializer(serializers.Serializer):
     database_name = serializers.CharField(label="时序数据库名称")
     alarm_data_delay_positive = serializers.IntegerField(label="正延时")
     alarm_data_delay_negative = serializers.IntegerField(label="负延时")
-
+    machine_image=serializers.ImageField(label="机床图片")
 #传感器
 class sensorSerializer(serializers.Serializer):
     id=serializers.CharField(label="id")
