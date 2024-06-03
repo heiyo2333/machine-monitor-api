@@ -1,4 +1,9 @@
+import os
+from random import random
+
 from rest_framework import serializers
+
+from System_Config import models
 from System_Config.models import sensorConfig
 
 # 新增配置请求
@@ -18,7 +23,6 @@ class ConfigAddSerializer(serializers.Serializer):
 
 #修改配置请求
 class ConfigUpdateSerializer(serializers.Serializer):
-    id=serializers.CharField(help_text="ID")
     config_id = serializers.IntegerField(help_text="系统配置id", )
     machine_code = serializers.CharField(label="机床编号")
     machine_name = serializers.CharField(help_text="机床名称")
@@ -32,6 +36,27 @@ class ConfigUpdateSerializer(serializers.Serializer):
     alarm_data_delay_positive = serializers.IntegerField(help_text="正延时")
     alarm_data_delay_negative = serializers.IntegerField(help_text="负延时")
     machine_image=serializers.ImageField(help_text="机床图片")
+    def save(self):
+        config_id = self.validated_data['config_id']
+        new_image = self.validated_data['machine_image']
+
+        # 获取现有的learning_file对象
+        learning_file = models.systemConfig.objects.get(config_id=config_id)
+
+        _, file_extension = os.path.splitext(new_image.name)
+
+        # 从本地文件系统中删除现有文件
+        if learning_file.machine_image:
+            os.remove(learning_file.machine_image.path)
+
+        # count = random.randint(1, 50)
+        # # 生成新的文件名
+        # new_image_name = f"{learning_file.software_number}-加工图纸-{count}{file_extension}"
+
+        # 直接更新数据库中的图片字段
+        learning_file.machine_image.save(new_image, save=True)
+        learning_file.save()
+
 
 #删除配置请求
 class ConfigDeleteSerializer(serializers.Serializer):
