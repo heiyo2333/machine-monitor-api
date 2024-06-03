@@ -172,7 +172,7 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
                          responses={200: openapi.Response('successful', serializer.componentConfigSerializer)},
                          tags=["MethodConfig"], )
     @action(detail=False, methods=['get'])
-    def machineSelect(self, request):
+    def componentSelect(self, request):
         systemConfig_id = self.request.query_params.get('id')
         component_Config = models.componentConfig.objects.filter(config_id=systemConfig_id)
         request_list = []
