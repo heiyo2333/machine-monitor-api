@@ -12,7 +12,7 @@ def create_initial_data(apps, schema_editor):
     Model1.objects.create(id=1, machine_code='vmc850', machine_name='大恒机床VMC850', machine_type='五轴加工中心',
                           machine_description='大恒机床-五轴-VMC850', manager='张三', machine_ip='192.168.110.23',
                           machine_port=7798, tool_number=30, database_name='ComponentMonitor',
-                          alarm_data_delay_positive=30, alarm_data_delay_negative=10, is_apply=1)
+                          alarm_data_delay_positive=30, alarm_data_delay_negative=10, machine_image='Machine/MachineImage/test.png',is_apply=1)
     # 初始化加速度传感器
     Model2.objects.create(pk=1, sensor_code="Principal-DH5501R-Px", sensor_name='主轴-三相加速度传感器', frequency=100,
                           channel_number=3, sensor_status=1)
@@ -44,6 +44,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='sensorConfig',
             fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('sensor_code', models.CharField(max_length=32, primary_key=True, serialize=False)),
                 ('sensor_name', models.CharField(max_length=32, null=True)),
                 ('frequency', models.IntegerField(null=True)),
@@ -68,6 +69,7 @@ class Migration(migrations.Migration):
                 ('alarm_data_delay_positive', models.IntegerField(null=True)),
                 ('alarm_data_delay_negative', models.IntegerField(null=True)),
                 ('is_apply', models.BooleanField(default=0)),
+                ('machine_image', models.ImageField(null=True, upload_to='MachineImage/')),  # 机床图片
             ],
         ),
         migrations.CreateModel(

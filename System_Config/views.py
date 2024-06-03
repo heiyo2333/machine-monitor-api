@@ -50,6 +50,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         database_name = self.request.data.get('database_name')
         alarm_data_delay_positive = self.request.data.get('alarm_data_delay_positive')
         alarm_data_delay_negative = self.request.data.get('alarm_data_delay_negative')
+        machine_image=self.request.data.get('machine_image')
         models.systemConfig.objects.create(machine_code=machine_code,
                                            machine_name=machine_name,
                                            machine_type=machine_type,
@@ -60,7 +61,8 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
                                            tool_number=tool_number,
                                            database_name=database_name,
                                            alarm_data_delay_positive=alarm_data_delay_positive,
-                                           alarm_data_delay_negative=alarm_data_delay_negative, )
+                                           alarm_data_delay_negative=alarm_data_delay_negative,
+                                           machine_image=machine_image)
         response = {
             'status': 200,
             'message': '新增配置成功'
@@ -76,7 +78,6 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['post'])
     def configUpdate(self, request):
-        id=self.request.data.get('id')
         config_id = self.request.data.get('config_id')
         machine_code = self.request.data.get('machine_code')
         machine_name = self.request.data.get('machine_name')
@@ -89,10 +90,11 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         database_name = self.request.data.get('database_name')
         alarm_data_delay_positive = self.request.data.get('alarm_data_delay_positive')
         alarm_data_delay_negative = self.request.data.get('alarm_data_delay_negative')
+        machine_image=self.request.data.get('machine_image')
         configuration1 = models.systemConfig.objects.filter(id=config_id)
         configuration2 = models.systemConfig.objects.get(id=config_id)
-        configuration1.update(machine_code=machine_code,
-                              id=id,
+        configuration1.update(config_id=config_id,
+                              machine_code=machine_code,
                               machine_name=machine_name,
                               machine_type=machine_type,
                               machine_description=machine_description,
@@ -102,7 +104,8 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
                               tool_number=tool_number,
                               database_name=database_name,
                               alarm_data_delay_positive=alarm_data_delay_positive,
-                              alarm_data_delay_negative=alarm_data_delay_negative, )
+                              alarm_data_delay_negative=alarm_data_delay_negative,
+                              machine_image=machine_image)
         response = {
             'status': 200,
             'message': '修改配置成功'
@@ -205,6 +208,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             'database_name': configuration1.database_name,
             'alarm_data_delay_positive': configuration1.alarm_data_delay_positive,
             'alarm_data_delay_negative': configuration1.alarm_data_delay_negative,
+            'machine_image':configuration1.machine_image
         }
         response = {
             'data': data,
