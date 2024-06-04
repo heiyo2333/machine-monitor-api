@@ -25,7 +25,12 @@ class sensorConfig(models.Model):
     frequency = models.IntegerField(null=True)  # 采样频率
     channel_number = models.IntegerField(null=True)  # 通道数
     remark = models.CharField(max_length=32, null=True)  # 备注
-    sensor_status = models.BooleanField(default=False)  # 状态
+    sensor_status = models.IntegerField(default=2) #状态 2:未配置；1：开启 0：关闭
+    operational_status=models.BooleanField(default=True) # 运行状态
+    sensor_image = models.ImageField(null=True, upload_to='Sensor/SensorImage/')  # 传感器图片
+    machine_name = models.CharField(max_length=32, null=True)
+    machine_code=models.CharField(max_length=32, null=True)
+    config_id=models.CharField(max_length=32, null=True)
 
 
 # 通道配置
