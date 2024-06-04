@@ -14,12 +14,16 @@ class methodConfig(models.Model):
 class componentConfig(models.Model):
     config_id = models.IntegerField(null=True)  # 机床所在配置的id
     machine_code = models.CharField(max_length=32, null=True)  # 机床编号
+    component_code = models.CharField(max_length=32, null=False)  # 部件编号
     machine_name = models.CharField(max_length=32, null=True)  # 机床名称
     component_name = models.CharField(max_length=32, null=True)  # 部件名称
     algorithm_id = models.IntegerField(null=True)  # 算法id
     algorithm_name = models.CharField(max_length=32, null=True)  # 算法名称
     algorithm_channel = models.CharField(max_length=32, null=True)  # 算法输入通道1
     remark = models.CharField(max_length=32, null=True)  # 备注
+
+    component_status = models.CharField(max_length=32, null=False)  # 部件运行状态
+    monitor_status = models.BooleanField(default=False)  # 监测状态
 
 
 # 部件配置附表

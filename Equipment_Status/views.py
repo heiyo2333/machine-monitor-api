@@ -11,6 +11,8 @@ from rest_framework import viewsets
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.authentication import BasicAuthentication
 
+import Method_Config
+import System_Config
 from . import models, serializer
 
 
@@ -22,16 +24,36 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
     def get_queryset(self):
         return models.machineStatus.objects.all()
 
+    # 设备运行状况 > 机床选择下拉框
+    @swagger_auto_schema(operation_summary='设备运行状况 > 机床选择下拉框',
+                         responses={200: 'Successful'},
+                         tags=["EquipmentStatus"], )
+    @action(detail=False, methods=['get'])
+    def machineSelect(self, request):
+        query = System_Config.models.systemConfig.objects.all()
+        request_list = []
+        for i in query:
+            request_list.append({
+                'id': i.id,
+                'machine_code': i.machine_code,
+                'machine_name': i.machine_name,
+            })
+        response_list = {
+            'list': request_list,
+        }
+        response = {
+            'data': response_list,
+            'message': 'Successful',
+            'status': 200,
+        }
+        return JsonResponse(response)
+
     # 设备运行状况 > 查询机床运行状况
     @swagger_auto_schema(
         operation_summary='设备运行状况 > 机床运行状况',
         # 获取参数
         manual_parameters=[
-            openapi.Parameter('machine_code', openapi.IN_QUERY, description='机床编号', type=openapi.TYPE_STRING,
-                              required=True),
-            openapi.Parameter('pageSize', openapi.IN_QUERY, description='一页多少条', type=openapi.TYPE_INTEGER,
-                              required=True),
-            openapi.Parameter('current', openapi.IN_QUERY, description='当前页面号', type=openapi.TYPE_INTEGER,
+            openapi.Parameter('id', openapi.IN_QUERY, description='id', type=openapi.TYPE_STRING,
                               required=True),
         ],
         responses={200: openapi.Response('successful', serializer.EquipmentStatusSerializer)},
@@ -39,21 +61,16 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['get'])
     def machineStatusList(self, request):
-        machine_code = self.request.query_params.get('machine_code')
-        pageSize = int(self.request.query_params.get('pageSize'))
-        current = int(self.request.query_params.get('current'))
-        first = (current - 1) * pageSize
-        last = current * pageSize
-        machine_all = models.machineStatus.objects.filter(machine_code=machine_code)[first:last]
-        total = models.machineStatus.objects.filter(machine_code=machine_code).count()
+        id = self.request.query_params.get('id')
+        machine_all = Method_Config.models.componentConfig.objects.filter(config_id=id)
+        total = machine_all.count()
         result_list = []
         for x in machine_all:
             result_list.append(
                 {
-                    'machine_code': x.machine_code,
-                    'machine_name': x.machine_name,
-                    'component_number': x.component_number,
+                    'id': x.id,
                     'component_name': x.component_name,
+                    'component_code': x.component_code,
                     'component_status': x.component_status,
                     'monitor_status': x.monitor_status,
                 }
@@ -69,39 +86,31 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
         }
         return JsonResponse(response)
 
-    # 设备运行状况 > 查询机床运行物理量
-    @swagger_auto_schema(
-        operation_summary='设备运行状况 > 机床运行物理量',
-        # 获取参数
-        manual_parameters=[
-            openapi.Parameter('value_name', openapi.IN_QUERY, description='物理量名称', type=openapi.TYPE_STRING,
-                              required=True),
-        ],
-        responses={200: openapi.Response('successful', serializer.MonitorValueSerializer)},
-        tags=["EquipmentStatus"],
-    )
+    # 设备运行状况 > 部件选择下拉框
+    @swagger_auto_schema(operation_summary='设备运行状况 > 部件选择下拉框',
+                         # 获取参数
+                         manual_parameters=[openapi.Parameter('id', openapi.IN_QUERY, description='机床配置表id',
+                                                              type=openapi.TYPE_INTEGER, required=True), ],
+                         responses={200: openapi.Response('successful', serializer.componentSerializer)},
+                         tags=["EquipmentStatus"], )
     @action(detail=False, methods=['get'])
-    def monitorValueList(self, request):
-        value_name = self.request.query_params.get('value_name')
-        value_information = models.monitorValue.objects.filter(value_name=value_name)
-        total = models.monitorValue.objects.filter(value_name=value_name).count()
-        result_list = []
-        for x in value_information:
-            result_list.append(
-                {
-                    'value_name': x.value_name,
-                    'value_unit': x.value_unit,
-                    'value': x.value,
-                }
-            )
+    def componentSelect(self, request):
+        systemConfig_id = self.request.query_params.get('id')
+        component_Config = Method_Config.models.componentConfig.objects.filter(config_id=systemConfig_id)
+        request_list = []
+        for i in component_Config:
+            request_list.append({
+                'id': i.id,
+                'machine_name': i.machine_name,
+                'component_name': i.component_name,
+            })
         response_list = {
-            'list': result_list,
-            'total': total,
+            'list': request_list,
         }
         response = {
             'data': response_list,
+            'message': 'Successful',
             'status': 200,
-            'message': 'successful',
         }
         return JsonResponse(response)
 
@@ -110,29 +119,28 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
         operation_summary='设备运行状况 > 传感器运行状况',
         # 获取参数
         manual_parameters=[
-            openapi.Parameter('sensor_code', openapi.IN_QUERY, description='传感器编码', type=openapi.TYPE_STRING,
-                              required=True),
-        ],
+            openapi.Parameter('id', openapi.IN_QUERY, description='id', type=openapi.TYPE_INTEGER,
+                              required=True), ],
         responses={200: openapi.Response('successful', serializer.SensorStatusSerializer)},
         tags=["EquipmentStatus"],
     )
     @action(detail=False, methods=['get'])
     def sensorStatusList(self, request):
-        sensor_code = self.request.query_params.get('sensor_code')
-        sensor_information = models.sensorStatus.objects.filter(sensor_code=sensor_code)
-        total = models.sensorStatus.objects.filter(sensor_code=sensor_code).count()
+        component_id = self.request.query_params.get('id')
+        sensor_information = System_Config.models.channelConfig.objects.filter(channel_id=component_id)
+        # total = sensor_information.count()
         result_list = []
         for x in sensor_information:
             result_list.append(
                 {
-                    'sensor_code': x.sensor_code,
+                    'id': x.id,
                     'sensor_name': x.sensor_name,
-                    'sensor_status': x.sensor_status,
+                    'sensor_status2': x.sensor_status2,
                 }
             )
         response_list = {
             'list': result_list,
-            'total': total,
+            # 'total': total,
         }
         response = {
             'data': response_list,
@@ -146,7 +154,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
         operation_summary='设备运行状况 > 警告及故障代码',
         # 获取参数
         manual_parameters=[
-            openapi.Parameter('machine_code', openapi.IN_QUERY, description='机床编号', type=openapi.TYPE_STRING,
+            openapi.Parameter('id', openapi.IN_QUERY, description='id', type=openapi.TYPE_INTEGER,
                               required=True),
         ],
         responses={200: openapi.Response('successful', serializer.FaultCodeSerializer)},
@@ -154,14 +162,14 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['get'])
     def faultCodeList(self, request):
-        machine_code = self.request.query_params.get('machine_code')
-        machine_information = models.faultCode.objects.filter(machine_code=machine_code)
-        total = models.faultCode.objects.filter(machine_code=machine_code).count()
+        id = self.request.query_params.get('id')
+        machineConfig = models.faultCode.objects.filter(config_id=id)
+        total = machineConfig.count()
         result_list = []
-        for x in machine_information:
+        for x in machineConfig:
             result_list.append(
                 {
-                    'machine_code': x.machine_code,
+                    'id': x.id,
                     'machine_name': x.machine_name,
                     'warning_time': x.warning_time,
                     'component_name': x.component_name,
@@ -185,33 +193,198 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
         operation_summary='设备运行状况 > 机床加工时间热力图',
         # 获取参数
         manual_parameters=[
-            openapi.Parameter('machine_code', openapi.IN_QUERY, description='机床编号', type=openapi.TYPE_STRING,
-                              required=True),
-        ],
+            openapi.Parameter('id', openapi.IN_QUERY, description='id', type=openapi.TYPE_INTEGER,
+                              required=True), ],
         responses={200: openapi.Response('successful', serializer.ThermalDiagramSerializer)},
         tags=["EquipmentStatus"],
     )
     @action(detail=False, methods=['get'])
     def thermalDiagramList(self, request):
-        machine_code = self.request.query_params.get('machine_code')
-        machine_information = models.thermalDiagram.objects.filter(machine_code=machine_code)
-        total = models.thermalDiagram.objects.filter(machine_code=machine_code).count()
+        id = self.request.query_params.get('id')
+        machine_information = models.thermalDiagram.objects.filter(config_id=id)
         result_list = []
         for x in machine_information:
             result_list.append(
                 {
-                    'machine_code': x.machine_code,
+                    'id': x.id,
                     'machine_name': x.machine_name,
                     'machine_running_time': x.machine_running_time,
                 }
             )
         response_list = {
             'list': result_list,
-            'total': total,
         }
         response = {
             'data': response_list,
             'status': 200,
             'message': 'successful',
+        }
+        return JsonResponse(response)
+
+    # 设备运行状况 > 部件树
+    @swagger_auto_schema(
+        operation_summary='设备运行状况 > 部件树',
+        # 获取参数
+        manual_parameters=[
+            openapi.Parameter('id', openapi.IN_QUERY, description='id', type=openapi.TYPE_INTEGER,
+                              required=True), ],
+        responses={200: openapi.Response('successful', serializer.ComponentTreeSerializer)},
+        tags=["EquipmentStatus"],
+    )
+    @action(detail=False, methods=['get'])
+    def componentTreeList(self, request):
+        id = self.request.query_params.get('id')
+        machine_information = Method_Config.models.componentConfig.objects.filter(config_id=id)
+        result_list = []
+        for x in machine_information:
+            result_list.append(
+                {
+                    'id': x.id,
+                    'machine_name': x.machine_name,
+                    'component_name': x.component_name,
+                }
+            )
+        response_list = {
+            'list': result_list,
+        }
+        response = {
+            'data': response_list,
+            'status': 200,
+            'message': 'successful',
+        }
+        return JsonResponse(response)
+
+    # 开始监控
+    @swagger_auto_schema(
+        operation_summary='开始监控',
+        # 获取参数
+        manual_parameters=[
+            openapi.Parameter('id', openapi.IN_QUERY, description='部件配置表的id', type=openapi.TYPE_INTEGER,
+                              required=True), ],
+        responses={200: openapi.Response('successful', serializer.ComponentTreeSerializer)},
+        tags=["EquipmentStatus"],
+    )
+    @action(detail=False, methods=['post'])
+    def monitor_on(self, request):
+        id = self.request.query_params.get('id')
+        # 检查记录是否已经在监控状态
+        try:
+            machineStatus = Method_Config.models.componentConfig.objects.get(id=id)
+            if machineStatus.monitor_status:
+                response = {
+                    'status': 400,
+                    'message': '该部件已经在监控状态'
+                }
+                return JsonResponse(response)
+            else:
+                # 更新记录为监控状态
+                machineStatus.monitor_status = True
+                machineStatus.save()
+                response = {
+                    'status': 200,
+                    'message': '开始监控成功'
+                }
+                return JsonResponse(response)
+        except Method_Config.models.machineStatus.DoesNotExist:
+            response = {
+                'status': 404,
+                'message': '未找到该通道'
+            }
+            return JsonResponse(response)
+
+    # 结束监控
+    @swagger_auto_schema(
+        operation_summary='结束监控',
+        # 获取参数
+        manual_parameters=[
+            openapi.Parameter('id', openapi.IN_QUERY, description='部件配置表的id', type=openapi.TYPE_INTEGER,
+                              required=True), ],
+        responses={200: openapi.Response('successful', serializer.ComponentTreeSerializer)},
+        tags=["EquipmentStatus"],
+    )
+    @action(detail=False, methods=['post'])
+    def monitor_off(self, request):
+        id = self.request.query_params.get('id')
+        try:
+            machineStatus = Method_Config.models.componentConfig.objects.get(id=id)
+            if not machineStatus.monitor_status:
+                response = {
+                    'status': 400,
+                    'message': '该通道已经处于非监控状态'
+                }
+                return JsonResponse(response)
+            else:
+                # 更新记录为非监控状态
+                machineStatus.monitor_status = False
+                machineStatus.save()
+                response = {
+                    'status': 200,
+                    'message': '结束监控成功'
+                }
+                return JsonResponse(response)
+        except Method_Config.models.machineStatus.DoesNotExist:
+            response = {
+                'status': 404,
+                'message': '未找到该通道'
+            }
+            return JsonResponse(response)
+
+    # 设备运行状况 > 警告及故障代码填写
+    @swagger_auto_schema(
+        operation_summary='设备运行状况 > 警告及故障代码填写',
+        request_body=serializer.AddFaultCodeSerializer,
+        responses={200: '警告及故障代码填写成功'},
+        tags=["EquipmentStatus"],
+    )
+    @action(detail=False, methods=['post'])
+    def addFaultCode(self, request):
+        config_id = self.request.data.get('config_id')  # 机床系统配置的id
+        config_X = Method_Config.models.componentConfig.objects.get(config_id=config_id)  # 根据config_id找的"部件配置_X"的一行数据
+        machine_code = config_X.machine_code  # 根据"部件配置X"查的机床编码
+        machine_name = config_X.machine_name  # 根据"部件配置X"查的机床名称
+        component_name = config_X.component_name  # 根据"部件配置X"查的部件名称
+        warning_time = self.request.data.get('warning_time')  # 警告时间
+        fault_type = self.request.data.get('fault_type')  # 报警类型
+        fault_code = self.request.data.get('fault_code')  # 报警代码
+
+        new_faultCode = models.faultCode.objects.create(config_id=config_id,
+                                                        machine_code=machine_code,
+                                                        machine_name=machine_name,
+                                                        warning_time=warning_time,
+                                                        component_name=component_name,
+                                                        fault_type=fault_type,
+                                                        fault_code=fault_code, )
+        response = {
+            'id': new_faultCode.id,
+            'status': 200,
+            'message': '警告及故障代码填写成功'
+        }
+        return JsonResponse(response)
+
+    # 设备运行状况 > 机床加工时间填写
+    @swagger_auto_schema(
+        operation_summary='设备运行状况 > 机床加工时间填写',
+        request_body=serializer.AddThermalDiagramSerializer,
+        responses={200: '机床加工时间填写成功'},
+        tags=["EquipmentStatus"],
+    )
+    @action(detail=False, methods=['post'])
+    def addThermalDiagram(self, request):
+        config_id = self.request.data.get('config_id')  # 机床系统配置的id
+        config_X = System_Config.models.systemConfig.objects.get(id=config_id)  # 根据config_id找的"部件配置_X"的一行数据
+        machine_code = config_X.machine_code
+        machine_name = config_X.machine_name  # 根据"部件配置X"查的机床名称
+        machine_time = self.request.data.get('machine_time')  # 机床工作日期
+        machine_running_time = self.request.data.get('machine_running_time')  # 机床加工时间
+
+        new_thermalDiagram = models.thermalDiagram.objects.create(config_id=config_id,
+                                                                  machine_code=machine_code,
+                                                                  machine_name=machine_name,
+                                                                  machine_time=machine_time,
+                                                                  machine_running_time=machine_running_time,)
+        response = {
+            'id': new_thermalDiagram.id,
+            'status': 200,
+            'message': '机床加工时间填写成功'
         }
         return JsonResponse(response)
