@@ -135,7 +135,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
                 {
                     'id': x.id,
                     'sensor_name': x.sensor_name,
-                    'sensor_status2': x.sensor_status2,
+                    'operational_status': x.operational_status,
                 }
             )
         response_list = {

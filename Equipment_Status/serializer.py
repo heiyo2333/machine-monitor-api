@@ -17,7 +17,7 @@ class SensorStatusSerializer(serializers.Serializer):
     id = serializers.IntegerField(label="传感器配置表id")
     sensor_code = serializers.CharField(label="传感器编号", max_length=32)  # 传感器编号
     sensor_name = serializers.CharField(label="传感器名称", max_length=32)  # 传感器名称
-    sensor_status2 = serializers.CharField(label="传感器运行状况", max_length=32)  # 传感器运行状况
+    operational_status = serializers.CharField(label="传感器运行状况", max_length=32)  # 传感器运行状况
 
 
 # 警告及故障代码查询序列化器
