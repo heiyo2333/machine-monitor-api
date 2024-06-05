@@ -12,16 +12,12 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from rest_framework.decorators import action, api_view
 from rest_framework import status
-
 import Method_Config
 from Method_Config.models import componentConfig
-
 from . import models, serializer
 from .serializer import ConfigListSerializer, ConfigInformationSerializer, channelListSerializer, \
     ConfigUpdateSerializer, sensorUpdateserializer
 from .models import sensorConfig, channelConfig
-
-
 class SystemConfigViewSet(viewsets.GenericViewSet):
     authentication_classes = (BasicAuthentication,)
     parser_classes = (MultiPartParser, FormParser)
@@ -39,13 +35,6 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['post'])
     def addConfig(self, request):
-        # id = self.request.data.get('id')
-        # if models.systemConfig.objects.filter(id=id).count() != 0:
-        #     response = {
-        #         'status': 500,
-        #         'message': '该id已存在'
-        #     }
-        #     return JsonResponse(response)
         machine_code = self.request.data.get('machine_code')
         machine_name = self.request.data.get('machine_name')
         machine_type = self.request.data.get('machine_type')
@@ -100,41 +89,35 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             alarm_data_delay_positive = serializer.validated_data['alarm_data_delay_positive']
             alarm_data_delay_negative = serializer.validated_data['alarm_data_delay_negative']
             machine_image = serializer.validated_data.get('machine_image')
-
-            learning_file = models.systemConfig.objects.get(id=config_id)
+            systemconfig = models.systemConfig.objects.get(id=config_id)
             # 更新图片文件
             if machine_image:
                 # 删除现有文件
-                if learning_file.machine_image and os.path.isfile(learning_file.machine_image.path):
-                    os.remove(learning_file.machine_image.path)
-
+                if systemconfig.machine_image and os.path.isfile(systemconfig.machine_image.path):
+                    os.remove(systemconfig.machine_image.path)
                 # 生成新的文件名
                 _, file_extension = os.path.splitext(machine_image.name)
-                new_image_name = f"{learning_file.machine_code}-机床-{get_random_string(8)}{file_extension}"
-
+                new_image_name = f"{systemconfig.machine_code}-机床-{get_random_string(8)}{file_extension}"
                 # 保存新的图片文件
-                learning_file.machine_image.save(new_image_name, ContentFile(machine_image.read()), save=True)
-
+                systemconfig.machine_image.save(new_image_name, ContentFile(machine_image.read()), save=True)
             # 更新其他字段
-            learning_file.machine_code = machine_code
-            learning_file.machine_name = machine_name
-            learning_file.machine_type = machine_type
-            learning_file.machine_description = machine_description
-            learning_file.manager = manager
-            learning_file.machine_ip = machine_ip
-            learning_file.machine_port = machine_port
-            learning_file.tool_number = tool_number
-            learning_file.database_name = database_name
-            learning_file.alarm_data_delay_positive = alarm_data_delay_positive
-            learning_file.alarm_data_delay_negative = alarm_data_delay_negative
-            learning_file.save()
-
+            systemconfig.machine_code = machine_code
+            systemconfig.machine_name = machine_name
+            systemconfig.machine_type = machine_type
+            systemconfig.machine_description = machine_description
+            systemconfig.manager = manager
+            systemconfig.machine_ip = machine_ip
+            systemconfig.machine_port = machine_port
+            systemconfig.tool_number = tool_number
+            systemconfig.database_name = database_name
+            systemconfig.alarm_data_delay_positive = alarm_data_delay_positive
+            systemconfig.alarm_data_delay_negative = alarm_data_delay_negative
+            systemconfig.save()
             response = {
                 'status': 200,
                 'message': '修改配置成功'
             }
             return JsonResponse(response)
-
     # 删除配置
     @swagger_auto_schema(
         operation_summary='删除配置',
@@ -147,14 +130,21 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         g = serializer.ConfigDeleteSerializer(data=request.data)
         g.is_valid()
         id = g.validated_data.get('id')
-        print(id)
-        models.systemConfig.objects.filter(id=id).delete()
-        response = {
-            'status': 200,
-            'message': '删除配置成功'
-        }
-        return JsonResponse(response)
-
+        sensor_configs = models.sensorConfig.objects.filter(config_id=id)
+        for sensor_config in sensor_configs:
+            channels=models.channelConfig.objects.filter(channel=sensor_config)
+            if channels.filter(is_monitor=True).exists():
+                return JsonResponse({'status': 500, 'message': '不能删除，存在正在监控的通道配置'})
+            # 方法2：if models.channelConfig.objects.filter(channel=sensor_config, is_monitor=True).exists():
+            #     return JsonResponse({'status': 500, 'message': '不能删除，存在正在监控的通道配置'}):
+            else:
+                models.systemConfig.objects.filter(id=id).delete()
+                models.sensorConfig.objects.filter(config_id=id).delete()
+                response = {
+                    'status': 200,
+                    'message': '删除配置成功'
+                }
+                return JsonResponse(response)
     #应用配置
     @swagger_auto_schema(
         operation_summary='应用配置',
@@ -173,8 +163,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             'status': 200,
             'message': '应用配置成功'}
         return JsonResponse(response)
-
-    #获取数据列表
+    #拉取配置信息
     @swagger_auto_schema(
         operation_summary='获取配置列表',
         responses={200: openapi.Response('配置列表获取成功', ConfigListSerializer)},
@@ -203,8 +192,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             'message': '配置列表获取成功',
         }
         return JsonResponse(response)
-
-    #系统配置信息
+    #查询配置信息
     @swagger_auto_schema(
         operation_summary='配置信息',
         # 获取参数
@@ -241,16 +229,13 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             'message': '配置信息，显示成功',
         }
         return JsonResponse(response)
-
     def sensor_get_queryset(self):
         return models.sensorConfig.objects.all()
-
     #传感器查询
     @swagger_auto_schema(
         operation_summary='传感器 > 查询',
         # 获取参数
         manual_parameters=[
-
             openapi.Parameter('pageSize', openapi.IN_QUERY, description='一页多少条', type=openapi.TYPE_INTEGER,
                               required=True),
             openapi.Parameter('current', openapi.IN_QUERY, description='当前页面号', type=openapi.TYPE_INTEGER,
@@ -261,7 +246,6 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['get'])
     def sensorDisplay(self, request):
-
         pageSize = int(self.request.query_params.get('pageSize'))
         current = int(self.request.query_params.get('current'))
         first = (current - 1) * pageSize
@@ -279,6 +263,9 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
                     'channel_number': x.channel_number,
                     'sensor_status': x.sensor_status,
                     'remark': x.remark,
+                    'machine_code': x.machine_code,
+                    'machine_name': x.machine_name,
+                    'config_id': x.config_id,
                     'sensor_image': x.sensor_image.url if x.sensor_image else None
                 }
             )
@@ -292,7 +279,6 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             'message': 'successful',
         }
         return JsonResponse(response)
-
     #传感器新增
     @swagger_auto_schema(
         operation_summary='传感器-新增',
@@ -311,12 +297,18 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         # overrun_times = self.request.data.get('overrun_times')
         # channel_field = self.request.data.get('channel_field')
         sensor_image = self.request.data.get('sensor_image')
+        machine_name=self.request.data.get('machine_name')
+        machien_code=self.request.data.get('machien_code')
+        config_id = self.request.data.get('config_id')
         sensor_instance = models.sensorConfig.objects.create(sensor_code=sensor_code,
                                                              sensor_name=sensor_name,
                                                              frequency=frequency,
                                                              channel_number=channel_number,
                                                              remark=remark,
-                                                             sensor_image=sensor_image
+                                                             sensor_image=sensor_image,
+                                                             machine_name=machine_name,
+                                                             machine_code=machien_code,
+                                                             config_id=config_id
                                                              )
         for m in range(1, int(channel_number) + 1):
             models.channelConfig.objects.create(
@@ -327,7 +319,6 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             'message': '传感器新增成功'
         }
         return JsonResponse(response)
-
     #传感器编辑
     @swagger_auto_schema(
         operation_summary='传感器-编辑',
@@ -343,35 +334,36 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             sensor_name = serializer.validated_data['sensor_name']
             frequency = serializer.validated_data['frequency']
             channel_number = serializer.validated_data['channel_number']
-            remark = serializer.validated_data['remark']
+            remark = serializer.validated_data.get('ramark')
             sensor_image = serializer.validated_data['sensor_image']
+            machine_name = serializer.validated_data['machine_name']
+            machine_code=serializer.validated_data['machine_code']
+            config_id = serializer.validated_data['config_id']
             sensor = models.sensorConfig.objects.get(sensor_code=sensor_code)
             if sensor_image:
                 # 删除现有文件
                 if sensor.sensor_image and os.path.isfile(sensor.sensor_image.path):
                     os.remove(sensor.sensor_image.path)
-
                 # 生成新的文件名
                 _, file_extension = os.path.splitext(sensor_image.name)
                 new_image_name = f"{sensor.sensor_code}-传感器-"
-
                 # 保存新的图片文件
                 sensor.sensor_image.save(new_image_name, ContentFile(sensor_image.read()), save=True)
-
             # 更新其他字段
-
             sensor.sensor_code = sensor_code
             sensor.sensor_name = sensor_name
             sensor.frequency = frequency
             sensor.channel_number = channel_number
-            sensor.remark = remark
+            sensor.remark=remark
+            sensor.machine_code = machine_code
+            sensor.machine_name = machine_name
+            sensor.config_id = config_id
             sensor.save()
             response = {
                 'status': 200,
                 'message': '修改成功'
             }
             return JsonResponse(response)
-
     #传感器删除
     @swagger_auto_schema(
         operation_summary='传感器-删除',
@@ -384,14 +376,17 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         g = serializer.sensorDeleteserializer(data=request.data)
         g.is_valid()
         id = g.validated_data.get('id')
-        print(id)
-        models.sensorConfig.objects.filter(id=id).delete()
-        response = {
-            'status': 200,
-            'message': '删除成功'
-        }
-        return JsonResponse(response)
+        channels = models.channelConfig.objects.filter(channel=id)
+        if channels.filter(is_monitor=True).exists():
+            return JsonResponse({'status': 500, 'message': '不能删除，存在正在监控的通道配置'},)
 
+        else:
+            models.sensorConfig.objects.filter(id=id).delete()
+            response = {
+                'status': 200,
+                'message': '删除成功'
+            }
+            return JsonResponse(response)
     #开始监控
     @swagger_auto_schema(
         operation_summary='开始监控',
@@ -405,39 +400,25 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         h.is_valid()
         id = h.validated_data.get('id')
         # 检查记录是否已经在监控状态
-        try:
-            channel = models.channelConfig.objects.get(id=id)
-            if channel.is_monitor:
-                response = {
-                    'status': 400,
-                    'message': '该通道已经在监控状态'
-                }
-                return JsonResponse(response)
-            else:
-                # 更新记录为监控状态
-                channel.is_monitor = True
-                channel.save()
-                sensorconfig = channel.channel  # 主表实例
-                sensorconfig.sensor_status = 1
-                sensorconfig.save()
-                response = {
-                    'status': 200,
-                    'message': '开始监控成功'
-                }
-                return JsonResponse(response)
-        except models.channelConfig.DoesNotExist:
-            response = {
-                'status': 404,
-                'message': '未找到该通道'
-            }
-            return JsonResponse(response)
-
-        else:
+        channel = models.channelConfig.objects.get(id=id)
+        if channel.is_monitor:
             response = {
                 'status': 400,
-                'message': '无效的数据'
+                'message': '该通道已经在监控状态'
             }
-        return JsonResponse(response)
+            return JsonResponse(response)
+        else:
+            # 更新记录为监控状态
+            channel.is_monitor = True
+            channel.save()
+            sensorconfig = channel.channel  # 主表实例
+            sensorconfig.sensor_status = 1
+            sensorconfig.save()
+            response = {
+                'status': 200,
+                'message': '开始监控成功'
+            }
+            return JsonResponse(response)
 
     #结束监控
     @swagger_auto_schema(
@@ -451,41 +432,26 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         h = serializer.monitor_offSerializer(data=request.data)
         h.is_valid()
         id = h.validated_data.get('id')
-        try:
-            channel = models.channelConfig.objects.get(id=id)
+        channel = models.channelConfig.objects.get(id=id)
 
-            if not channel.is_monitor:
-                response = {
-                    'status': 500,
-                    'message': '该通道已经处于非监控状态'
-                }
-                return JsonResponse(response)
-            else:
-                # 更新记录为非监控状态
-                channel.is_monitor = False
-                channel.save()
-
-                sensorconfig = channel.channel  #主表实例
-                sensorconfig.sensor_status = 0
-                sensorconfig.save()
-
-                response = {
-                    'status': 200,
-                    'message': '结束监控成功'
-                }
-                return JsonResponse(response)
-        except models.channelConfig.DoesNotExist:
+        if not channel.is_monitor:
             response = {
                 'status': 500,
-                'message': '未找到该通道'
+                'message': '该通道已经处于非监控状态'
             }
             return JsonResponse(response)
         else:
+            # 更新记录为非监控状态
+            channel.is_monitor = False
+            channel.save()
+            sensorconfig = channel.channel  #主表实例
+            sensorconfig.sensor_status = 0
+            sensorconfig.save()
             response = {
-                'status': 500,
-                'message': '无效的数据'
+                'status': 200,
+                'message': '结束监控成功'
             }
-        return JsonResponse(response)
+            return JsonResponse(response)
 
     #通道配置编辑
     @swagger_auto_schema(
@@ -511,7 +477,6 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             'message': '修改成功'
         }
         return JsonResponse(response)
-
     #通道配置显示
     @swagger_auto_schema(
         operation_summary='通道配置-显示',
