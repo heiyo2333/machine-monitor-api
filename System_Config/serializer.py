@@ -63,11 +63,11 @@ class ConfigDeleteSerializer(serializers.Serializer):
     id=serializers.CharField(help_text="ID")
 
 
-# 应用配置请求
+#应用配置请求
 class ConfigApplySerializer(serializers.Serializer):
     id=serializers.CharField(help_text="ID")
 
-#配置列表响应
+#拉取配置信息
 class ConfigListSerializer(serializers.Serializer):
     label = serializers.CharField(label="配置序号")
     key = serializers.IntegerField(label="配置id")
@@ -75,7 +75,7 @@ class ConfigListSerializer(serializers.Serializer):
     machine_name=serializers.CharField(label="机床名称",max_length=32)
     machine_code=serializers.CharField(label="机床编号",max_length=32)
 
-#配置信息响应
+#配置信息查询
 class ConfigInformationSerializer(serializers.Serializer):
     id=serializers.CharField(label="ID")
     machine_code = serializers.CharField(label="机床编号",max_length=32)
@@ -99,6 +99,9 @@ class sensorSerializer(serializers.Serializer):
     channel_number = serializers.IntegerField(label="通道数")  # 通道数
     remark = serializers.CharField(max_length=32, label="备注",required=False) #备注
     sensor_image=serializers.ImageField(label="传感器图片")
+    machine_name=serializers.CharField(label="机床名称",max_length=32)
+    machine_code=serializers.CharField(label="机床编号",max_length=32)
+    config_id=serializers.CharField(label="系统配置id",max_length=32)
 #传感器新增请求
 class sensorUpdateserializer(serializers.Serializer):
     sensor_code = serializers.CharField(label="传感器编号", max_length=32)  # 传感器编号
@@ -107,6 +110,9 @@ class sensorUpdateserializer(serializers.Serializer):
     channel_number = serializers.IntegerField(label="通道数")  # 通道数
     remark = serializers.CharField(max_length=32, label="备注",required=False)  # 备注
     sensor_image = serializers.ImageField(label="传感器图片")
+    machine_name = serializers.CharField(label="机床名称", max_length=32)
+    machine_code = serializers.CharField(label="机床编号", max_length=32)
+    config_id = serializers.CharField(label="系统配置id", max_length=32)
     def save(self):
         sensor_code = self.validated_data['sensor_code']
         new_image = self.validated_data['sensor_image']
@@ -129,7 +135,6 @@ class sensorUpdateserializer(serializers.Serializer):
         sensor.save()
 
 #传感器删除请求
-
 class sensorDeleteserializer(serializers.Serializer):
     id=serializers.CharField(label="id")
 
