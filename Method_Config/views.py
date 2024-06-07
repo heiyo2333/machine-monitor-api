@@ -75,12 +75,12 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['post'])
     def addMethodConfig(self, request):
-        algorithm_code = self.request.data.get('algorithm_code')
+        # algorithm_code = self.request.data.get('algorithm_code')
         algorithm_name = self.request.data.get('algorithm_name')
         algorithm_channel_number = self.request.data.get('algorithm_channel_number')
         algorithm_file = self.request.data.get('algorithm_file')
         remark = self.request.data.get('remark')
-        new_method_configuration = models.methodConfig.objects.create(algorithm_code=algorithm_code,
+        new_method_configuration = models.methodConfig.objects.create(# algorithm_code=algorithm_code,
                                                                       algorithm_name=algorithm_name,
                                                                       algorithm_channel_number=algorithm_channel_number,
                                                                       algorithm_file=algorithm_file,
@@ -100,11 +100,9 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['post'])
     def deleteMethodConfig(self, request):
-        g = serializer.deleteAlgorithmSerializer(data=request.data)
-        g.is_valid()
-        algorithm_code = g.validated_data.get('algorithm_code')
-        print(algorithm_code)
-        models.methodConfig.objects.filter(algorithm_code=algorithm_code).delete()
+        algorithm_id = self.request.data.get('algorithm_id')  # 要删除的那条数据的id
+        # 删除算法配置表对应id的实例
+        models.methodConfig.objects.filter(id=algorithm_id).delete()
         response = {
             'status': 200,
             'message': '删除算法配置成功'
@@ -114,14 +112,14 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
     # 算法配置 > 编辑
     @swagger_auto_schema(
         operation_summary='算法配置 > 编辑',
-        request_body=serializer.AlgorithmSerializer,
+        request_body=serializer.EditAlgorithmSerializer,
         responses={200: '算法配置修改成功'},
         tags=["MethodConfig"],
     )
     @action(detail=False, methods=['post'])
     def methodConfigUpdate(self, request):
-        algorithm_id = request.data.get('algorithm_id')
-        algorithm_code = self.request.data.get('algorithm_code')
+        algorithm_id = self.request.data.get('algorithm_id')
+        algorithm_code = models.methodConfig.objects.get(id=algorithm_id).algorithm_code
         algorithm_name = self.request.data.get('algorithm_name')
         algorithm_channel_number = self.request.data.get('algorithm_channel_number')
         remark = self.request.data.get('remark')

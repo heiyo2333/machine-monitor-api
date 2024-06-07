@@ -84,4 +84,4 @@ class MachineImageSerializer(serializers.Serializer):
     id = serializers.IntegerField(label="id")
     machine_code = serializers.CharField(label="机床编号", max_length=32)
     machine_name = serializers.CharField(label="机床名称", max_length=32)  # 机床名称
-    machine_image = serializers.FileField(label="机床图片",)  # 机床图片
+    machine_image_url = serializers.CharField(label="机床图片URL", max_length=255)  # 机床图片的URL
