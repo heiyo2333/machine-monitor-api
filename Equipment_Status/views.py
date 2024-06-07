@@ -388,3 +388,41 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
             'message': '机床加工时间填写成功'
         }
         return JsonResponse(response)
+
+    # 设备运行状况 > 查询机床图片
+    @swagger_auto_schema(
+        operation_summary='设备运行状况 > 查询机床图片',
+        # 获取参数
+        manual_parameters=[
+            openapi.Parameter('id', openapi.IN_QUERY, description='id', type=openapi.TYPE_STRING,
+                              required=True),
+        ],
+        responses={200: openapi.Response('successful', serializer.MachineImageSerializer)},
+        tags=["EquipmentStatus"],
+    )
+    @action(detail=False, methods=['get'])
+    def machineImage(self, request):
+        id = self.request.query_params.get('id')
+        machine_all = System_Config.models.systemConfig.objects.filter(config_id=id)
+        total = machine_all.count()
+        result_list = []
+        for x in machine_all:
+            result_list.append(
+                {
+                    'id': x.id,
+                    'component_name': x.component_name,
+                    'component_code': x.component_code,
+                    'component_status': x.component_status,
+                    'monitor_status': x.monitor_status,
+                }
+            )
+        response_list = {
+            'list': result_list,
+            'total': total,
+        }
+        response = {
+            'data': response_list,
+            'status': 200,
+            'message': 'successful',
+        }
+        return JsonResponse(response)
