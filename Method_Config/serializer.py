@@ -1,9 +1,18 @@
 from rest_framework import serializers
 
 
-# 算法配置：展示序列化器、新增算法序列化器、编辑序列化器
+# 算法配置：展示序列化器、新增算法序列化器
 class AlgorithmSerializer(serializers.Serializer):
-    algorithm_code = serializers.CharField(help_text="算法编号", max_length=32)  # 算法编号
+    # algorithm_code = serializers.CharField(help_text="算法编号", max_length=32)  # 算法编号
+    algorithm_name = serializers.CharField(help_text="算法名称", max_length=32)  # 算法名称
+    algorithm_channel_number = serializers.IntegerField(help_text="算法通道数")  # 算法通道数
+    remark = serializers.CharField(help_text="备注", max_length=32, required=False)  # 备注
+    algorithm_file = serializers.FileField(help_text="算法文件")  # 算法文件
+
+
+# 算法配置：编辑序列化器
+class EditAlgorithmSerializer(serializers.Serializer):
+    algorithm_id = serializers.IntegerField(help_text="算法配置表id")
     algorithm_name = serializers.CharField(help_text="算法名称", max_length=32)  # 算法名称
     algorithm_channel_number = serializers.IntegerField(help_text="算法通道数")  # 算法通道数
     remark = serializers.CharField(help_text="备注", max_length=32, required=False)  # 备注
@@ -12,13 +21,12 @@ class AlgorithmSerializer(serializers.Serializer):
 
 # 算法配置：删除算法请求序列化器
 class deleteAlgorithmSerializer(serializers.Serializer):
-    algorithm_code = serializers.CharField(help_text="算法编号", max_length=32)  # 算法编号
+    algorithm_id = serializers.CharField(help_text="算法配置表id", max_length=32)  # 算法配置表id
 
 
 # 部件配置：查询部件请求序列化器、删除部件请求序列化器
 class deleteComponentConfigSerializer(serializers.Serializer):
     id = serializers.IntegerField(label="部件配置表id")
-    machine_code = serializers.CharField(label="机床编号", max_length=32)  # 机床编号
 
 
 # 部件配置：新增部件请求序列化器

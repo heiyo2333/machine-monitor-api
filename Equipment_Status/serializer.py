@@ -77,3 +77,11 @@ class componentSerializer(serializers.Serializer):
     config_id = serializers.IntegerField(label="系统配置id")  # (实际上是系统配置的id)
     component_name = serializers.CharField(label="部件名称", max_length=32)  # 部件名称
     machine_name = serializers.CharField(label="机床名称", max_length=32)  # 机床名称
+
+
+# 机床图片查询序列化器
+class MachineImageSerializer(serializers.Serializer):
+    id = serializers.IntegerField(label="id")
+    machine_code = serializers.CharField(label="机床编号", max_length=32)
+    machine_name = serializers.CharField(label="机床名称", max_length=32)  # 机床名称
+    machine_image_url = serializers.CharField(label="机床图片URL", max_length=255)  # 机床图片的URL

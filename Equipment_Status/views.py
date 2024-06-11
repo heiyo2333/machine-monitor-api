@@ -2,6 +2,7 @@ import time
 
 from django.db.models import Q, Max
 from django.http import JsonResponse
+from django.urls import reverse
 from drf_yasg.utils import swagger_auto_schema
 from django.views.decorators.csrf import csrf_exempt
 from drf_yasg import openapi
@@ -126,8 +127,8 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['get'])
     def sensorStatusList(self, request):
-        component_id = self.request.query_params.get('id')
-        sensor_information = System_Config.models.channelConfig.objects.filter(channel_id=component_id)
+        id = self.request.query_params.get('id')
+        sensor_information = System_Config.models.sensorConfig.objects.filter(config_id=id)
         # total = sensor_information.count()
         result_list = []
         for x in sensor_information:
@@ -339,7 +340,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['post'])
     def addFaultCode(self, request):
         config_id = self.request.data.get('config_id')  # 机床系统配置的id
-        config_X = Method_Config.models.componentConfig.objects.get(config_id=config_id)  # 根据config_id找的"部件配置_X"的一行数据
+        config_X = Method_Config.models.componentConfig.objects.filter(config_id=config_id)[0]  # 根据config_id找的"部件配置_X"的一行数据
         machine_code = config_X.machine_code  # 根据"部件配置X"查的机床编码
         machine_name = config_X.machine_name  # 根据"部件配置X"查的机床名称
         component_name = config_X.component_name  # 根据"部件配置X"查的部件名称
@@ -381,10 +382,45 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
                                                                   machine_code=machine_code,
                                                                   machine_name=machine_name,
                                                                   machine_time=machine_time,
-                                                                  machine_running_time=machine_running_time,)
+                                                                  machine_running_time=machine_running_time, )
         response = {
             'id': new_thermalDiagram.id,
             'status': 200,
             'message': '机床加工时间填写成功'
+        }
+        return JsonResponse(response)
+
+    # 设备运行状况 > 查询机床图片
+    @swagger_auto_schema(
+        operation_summary='设备运行状况 > 查询机床图片',
+        # 获取参数
+        manual_parameters=[
+            openapi.Parameter('id', openapi.IN_QUERY, description='id', type=openapi.TYPE_STRING,
+                              required=True),
+        ],
+        responses={200: openapi.Response('successful', serializer.MachineImageSerializer)},
+        tags=["EquipmentStatus"],
+    )
+    @action(detail=False, methods=['get'])
+    def machineImage(self, request):
+        id = self.request.query_params.get('id')
+        if not id:
+            return JsonResponse({'error': 'ID is required'}, status=400)
+        try:
+            machine = System_Config.models.systemConfig.objects.get(id=id)
+        except System_Config.models.systemConfig.DoesNotExist:
+            return JsonResponse({'error': 'Machine not found'}, status=404)
+
+        result = {
+            'id': machine.id,
+            'machine_code': machine.machine_code,
+            'machine_name': machine.machine_name,
+            'machine_image_url': machine.machine_image.url,
+        }
+
+        response = {
+            'data': result,
+            'status': 200,
+            'message': 'successful',
         }
         return JsonResponse(response)
