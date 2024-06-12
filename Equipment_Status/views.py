@@ -20,7 +20,7 @@ from . import models, serializer
 class EquipmentStatusViewSet(viewsets.GenericViewSet):
     authentication_classes = (BasicAuthentication,)
     parser_classes = (MultiPartParser, FormParser)
-
+    serializer_class = serializer.EquipmentStatusSerializer  # 添加这一行
     # 返回数据库所有对象.
     def get_queryset(self):
         return models.machineStatus.objects.all()
