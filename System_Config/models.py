@@ -25,17 +25,16 @@ class sensorConfig(models.Model):
     frequency = models.IntegerField(null=True)  # 采样频率
     channel_number = models.IntegerField(null=True)  # 通道数
     remark = models.CharField(max_length=32, null=True)  # 备注
-    sensor_status = models.IntegerField(default=2) #状态 2:未配置；1：开启 0：关闭
+    sensor_status = models.BooleanField(default=0) #状态 1：开启 0：关闭
     operational_status=models.BooleanField(default=True) # 运行状态
     sensor_image = models.ImageField(null=True, upload_to='Sensor/SensorImage/')  # 传感器图片
-    machine_name = models.CharField(max_length=32, null=True)
-    machine_code=models.CharField(max_length=32, null=True)
     config_id=models.CharField(max_length=32, null=True)
 
 
 # 通道配置
 class channelConfig(models.Model):
     sensor_name = models.CharField(max_length=32, null=True)  # 传感器名称
+    sensor_code = models.CharField(max_length=32, null=True)  # 传感器名称
     channel_name = models.CharField(null=True, max_length=32)  # 通道名称
     overrun_times = models.IntegerField(null=True)  # 超限次数
     channel_field = models.CharField(max_length=32, null=True)  # 对应字段
@@ -46,3 +45,6 @@ class channelConfig(models.Model):
 #     name = models.CharField(max_length=4, null=True)  # 名称
 #     value = models.CharField(max_length=4, null=True)  # 值
 #     type = models.CharField(max_length=4, null=True)  # 类型
+class sensorStatusContext(models.Model):
+    type = models.CharField(max_length=32, null=True)  # 状态类型：是否配置
+    value = models.CharField(max_length=32, null=True)  # 状态名称
