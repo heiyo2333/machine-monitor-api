@@ -1,5 +1,6 @@
 import json
 import os
+import socket
 import serial.tools.list_ports
 from django.core.files.base import ContentFile
 from django.db.models import Q
@@ -18,6 +19,13 @@ from . import models, serializer
 from .serializer import ConfigListSerializer, ConfigInformationSerializer, channelListSerializer, \
     ConfigUpdateSerializer, sensorUpdateserializer
 from .models import sensorConfig, channelConfig
+
+def get_local_ip():
+    hostname = socket.gethostname()
+    local_ip = socket.gethostbyname(hostname)
+    return local_ip
+
+
 class SystemConfigViewSet(viewsets.GenericViewSet):
     authentication_classes = (BasicAuthentication,)
     parser_classes = (MultiPartParser, FormParser)
@@ -47,24 +55,26 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         alarm_data_delay_positive = self.request.data.get('alarm_data_delay_positive')
         alarm_data_delay_negative = self.request.data.get('alarm_data_delay_negative')
         machine_image = self.request.data.get('machine_image')
-        models.systemConfig.objects.create(machine_code=machine_code,
-                                           machine_name=machine_name,
-                                           machine_type=machine_type,
-                                           machine_description=machine_description,
-                                           manager=manager,
-                                           machine_ip=machine_ip,
-                                           machine_port=machine_port,
-                                           tool_number=tool_number,
-                                           database_name=database_name,
-                                           alarm_data_delay_positive=alarm_data_delay_positive,
-                                           alarm_data_delay_negative=alarm_data_delay_negative,
-                                           machine_image=machine_image)
-        response = {
-            'status': 200,
-            'message': '新增配置成功'
-        }
-        return JsonResponse(response)
-
+        if machine_image.name.endswith('.png'):
+            models.systemConfig.objects.create(machine_code=machine_code,
+                                               machine_name=machine_name,
+                                               machine_type=machine_type,
+                                               machine_description=machine_description,
+                                               manager=manager,
+                                               machine_ip=machine_ip,
+                                               machine_port=machine_port,
+                                               tool_number=tool_number,
+                                               database_name=database_name,
+                                               alarm_data_delay_positive=alarm_data_delay_positive,
+                                               alarm_data_delay_negative=alarm_data_delay_negative,
+                                               machine_image=machine_image)
+            response = {
+                'status': 200,
+                'message': '新增配置成功'
+            }
+            return JsonResponse(response)
+        else:
+            return JsonResponse({'status': 500, 'message': 'Image file must be in PNG format'})
     #修改配置
     @swagger_auto_schema(
         operation_summary='修改配置',
@@ -91,7 +101,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             machine_image = serializer.validated_data.get('machine_image')
             systemconfig = models.systemConfig.objects.get(id=config_id)
             # 更新图片文件
-            if machine_image:
+            if machine_image and machine_image.name.endswith('.png'):
                 # 删除现有文件
                 if systemconfig.machine_image and os.path.isfile(systemconfig.machine_image.path):
                     os.remove(systemconfig.machine_image.path)
@@ -100,6 +110,8 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
                 new_image_name = f"{systemconfig.machine_code}-机床-{get_random_string(8)}{file_extension}"
                 # 保存新的图片文件
                 systemconfig.machine_image.save(new_image_name, ContentFile(machine_image.read()), save=True)
+            else:
+                return JsonResponse({'status': 500, 'message': 'Image file is required'})
             # 更新其他字段
             systemconfig.machine_code = machine_code
             systemconfig.machine_name = machine_name
@@ -118,6 +130,11 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
                 'message': '修改配置成功'
             }
             return JsonResponse(response)
+        else:
+            return JsonResponse({
+                'status': 500,
+                'message': '数据无效'
+            })
     # 删除配置
     @swagger_auto_schema(
         operation_summary='删除配置',
@@ -135,16 +152,17 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             channels=models.channelConfig.objects.filter(channel=sensor_config)
             if channels.filter(is_monitor=True).exists():
                 return JsonResponse({'status': 500, 'message': '不能删除，存在正在监控的通道配置'})
+
             # 方法2：if models.channelConfig.objects.filter(channel=sensor_config, is_monitor=True).exists():
             #     return JsonResponse({'status': 500, 'message': '不能删除，存在正在监控的通道配置'}):
             else:
-                models.systemConfig.objects.filter(id=id).delete()
                 models.sensorConfig.objects.filter(config_id=id).delete()
-                response = {
-                    'status': 200,
-                    'message': '删除配置成功'
-                }
-                return JsonResponse(response)
+        models.systemConfig.objects.filter(id=id).delete()
+        response = {
+            'status': 200,
+            'message': '删除配置成功'
+        }
+        return JsonResponse(response)
     #应用配置
     @swagger_auto_schema(
         operation_summary='应用配置',
@@ -154,15 +172,23 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['post'])
     def apply(self, request):
-        h = serializer.ConfigDeleteSerializer(data=request.data)
-        h.is_valid()
-        config_id = h.validated_data.get('id')
-        models.systemConfig.objects.all().update(is_apply=False)
-        models.systemConfig.objects.filter(id=config_id).update(is_apply=True)
-        response = {
-            'status': 200,
-            'message': '应用配置成功'}
-        return JsonResponse(response)
+        h = serializer.ConfigApplySerializer(data=request.data)
+        if h.is_valid():
+            config_id = h.validated_data.get('id')
+            if not models.systemConfig.objects.filter(id=config_id).exists():
+                return JsonResponse({'status': 500, 'message': '配置ID不存在'}, status=400)
+            models.systemConfig.objects.all().update(is_apply=False)
+            models.systemConfig.objects.filter(id=config_id).update(is_apply=True)
+            response = {
+                'status': 200,
+                'message': '应用配置成功'
+            }
+            return JsonResponse(response)
+        else:
+            return JsonResponse({
+                'status': 500,
+                'message': '数据无效'
+            })
     #拉取配置信息
     @swagger_auto_schema(
         operation_summary='获取配置列表',
@@ -207,28 +233,31 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['get'])
     def configDisplay(self, request):
         config_id = self.request.query_params.get("config_id")
-        configuration1 = models.systemConfig.objects.get(id=config_id)
-        data = {
-            'id': configuration1.id,
-            'machine_code': configuration1.machine_code,
-            'machine_name': configuration1.machine_name,
-            'machine_type': configuration1.machine_type,
-            'machine_description': configuration1.machine_description,
-            'manager': configuration1.manager,
-            'machine_ip': configuration1.machine_ip,
-            'machine_port': configuration1.machine_port,
-            'tool_number': configuration1.tool_number,
-            'database_name': configuration1.database_name,
-            'alarm_data_delay_positive': configuration1.alarm_data_delay_positive,
-            'alarm_data_delay_negative': configuration1.alarm_data_delay_negative,
-            'machine_image': configuration1.machine_image.url if configuration1.machine_image else None
-        }
-        response = {
-            'data': data,
-            'status': 200,
-            'message': '配置信息，显示成功',
-        }
-        return JsonResponse(response)
+        if not models.systemConfig.objects.filter(id=config_id).exists():
+            return JsonResponse({'status': 500, 'message': '配置ID不存在'})
+        else:
+            configuration1 = models.systemConfig.objects.get(id=config_id)
+            data = {
+                'id': configuration1.id,
+                'machine_code': configuration1.machine_code,
+                'machine_name': configuration1.machine_name,
+                'machine_type': configuration1.machine_type,
+                'machine_description': configuration1.machine_description,
+                'manager': configuration1.manager,
+                'machine_ip': configuration1.machine_ip,
+                'machine_port': configuration1.machine_port,
+                'tool_number': configuration1.tool_number,
+                'database_name': configuration1.database_name,
+                'alarm_data_delay_positive': configuration1.alarm_data_delay_positive,
+                'alarm_data_delay_negative': configuration1.alarm_data_delay_negative,
+                'machine_image': f"http://{get_local_ip()}:8000"+configuration1.machine_image.url if configuration1.machine_image else None
+            }
+            response = {
+                'data': data,
+                'status': 200,
+                'message': '配置信息，显示成功',
+            }
+            return JsonResponse(response)
     def sensor_get_queryset(self):
         return models.sensorConfig.objects.all()
     #传感器查询
@@ -240,24 +269,29 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
                               required=True),
             openapi.Parameter('current', openapi.IN_QUERY, description='当前页面号', type=openapi.TYPE_INTEGER,
                               required=True),
+            openapi.Parameter('config_id', openapi.IN_QUERY, description='系统配置id', type=openapi.TYPE_INTEGER,
+                              required=False),
         ],
-        responses={200: openapi.Response('successful', serializer.sensorSerializer)},
+        responses={200: openapi.Response('successful', serializer.sensorQuerysserializer)},
         tags=["sensor"],
     )
     @action(detail=False, methods=['get'])
     def sensorDisplay(self, request):
         pageSize = int(self.request.query_params.get('pageSize'))
         current = int(self.request.query_params.get('current'))
+        config_id=self.request.query_params.get('config_id')
         first = (current - 1) * pageSize
         last = current * pageSize
         sensor = self.sensor_get_queryset()
+        if config_id:
+            sensor = sensor.filter(config_id=config_id)
         sensor_magazine_all = sensor.all()[first:last]
         total = sensor.all().count()
         result_list = []
         for x in sensor_magazine_all:
             result_list.append(
                 {
-                    'sensor_code': x.sensor_code,
+                    'sensor_code':  x.sensor_code,
                     'sensor_name': x.sensor_name,
                     'frequency': x.frequency,
                     'channel_number': x.channel_number,
@@ -266,7 +300,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
                     'machine_code': x.machine_code,
                     'machine_name': x.machine_name,
                     'config_id': x.config_id,
-                    'sensor_image': x.sensor_image.url if x.sensor_image else None
+                    'sensor_image': f"http://{get_local_ip()}:8000"+x.sensor_image.url if x.sensor_image else None
                 }
             )
         response_list = {
@@ -300,25 +334,28 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         machine_name=self.request.data.get('machine_name')
         machien_code=self.request.data.get('machien_code')
         config_id = self.request.data.get('config_id')
-        sensor_instance = models.sensorConfig.objects.create(sensor_code=sensor_code,
-                                                             sensor_name=sensor_name,
-                                                             frequency=frequency,
-                                                             channel_number=channel_number,
-                                                             remark=remark,
-                                                             sensor_image=sensor_image,
-                                                             machine_name=machine_name,
-                                                             machine_code=machien_code,
-                                                             config_id=config_id
-                                                             )
-        for m in range(1, int(channel_number) + 1):
-            models.channelConfig.objects.create(
-                channel_id=sensor_instance.id
-            )
-        response = {
-            'status': 200,
-            'message': '传感器新增成功'
-        }
-        return JsonResponse(response)
+        if sensor_image.name.endswith('.png'):
+            sensor_instance = models.sensorConfig.objects.create(sensor_code=sensor_code,
+                                                                 sensor_name=sensor_name,
+                                                                 frequency=frequency,
+                                                                 channel_number=channel_number,
+                                                                 remark=remark,
+                                                                 sensor_image=sensor_image,
+                                                                 machine_name=machine_name,
+                                                                 machine_code=machien_code,
+                                                                 config_id=config_id
+                                                                 )
+            for m in range(1, int(channel_number) + 1):
+                models.channelConfig.objects.create(
+                    channel_id=sensor_instance.id
+                )
+            response = {
+                'status': 200,
+                'message': '传感器新增成功'
+            }
+            return JsonResponse(response)
+        else:
+            return JsonResponse({'status': 500, 'message': 'Image file must be in PNG format'})
     #传感器编辑
     @swagger_auto_schema(
         operation_summary='传感器-编辑',
@@ -340,7 +377,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             machine_code=serializer.validated_data['machine_code']
             config_id = serializer.validated_data['config_id']
             sensor = models.sensorConfig.objects.get(sensor_code=sensor_code)
-            if sensor_image:
+            if sensor_image and sensor_image.name.endswith('.png'):
                 # 删除现有文件
                 if sensor.sensor_image and os.path.isfile(sensor.sensor_image.path):
                     os.remove(sensor.sensor_image.path)
@@ -349,6 +386,8 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
                 new_image_name = f"{sensor.sensor_code}-传感器-"
                 # 保存新的图片文件
                 sensor.sensor_image.save(new_image_name, ContentFile(sensor_image.read()), save=True)
+            else:
+                return JsonResponse({'status': 500, 'message': 'Image file is required'})
             # 更新其他字段
             sensor.sensor_code = sensor_code
             sensor.sensor_name = sensor_name
@@ -364,6 +403,13 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
                 'message': '修改成功'
             }
             return JsonResponse(response)
+
+        else:
+            return JsonResponse({
+                'status': 500,
+                'message': '数据无效'
+            })
+
     #传感器删除
     @swagger_auto_schema(
         operation_summary='传感器-删除',

@@ -102,6 +102,18 @@ class sensorSerializer(serializers.Serializer):
     machine_name=serializers.CharField(label="机床名称",max_length=32)
     machine_code=serializers.CharField(label="机床编号",max_length=32)
     config_id=serializers.CharField(label="系统配置id",max_length=32)
+#传感器查询
+class sensorQuerysserializer(serializers.Serializer):
+    id = serializers.CharField(label="id")
+    sensor_code = serializers.CharField(label="传感器编号", max_length=32)  # 传感器编号
+    sensor_name = serializers.CharField(max_length=32, label="传感器名称")  # 传感器名称
+    frequency = serializers.IntegerField(label="采样频率")  # 采样频率
+    channel_number = serializers.IntegerField(label="通道数")  # 通道数
+    remark = serializers.CharField(max_length=32, label="备注", required=False)  # 备注
+    sensor_image = serializers.ImageField(label="传感器图片")
+    machine_name = serializers.CharField(label="机床名称", max_length=32)
+    machine_code = serializers.CharField(label="机床编号", max_length=32)
+    config_id = serializers.CharField(label="系统配置id", max_length=32,required=True)
 #传感器新增请求
 class sensorUpdateserializer(serializers.Serializer):
     sensor_code = serializers.CharField(label="传感器编号", max_length=32)  # 传感器编号
