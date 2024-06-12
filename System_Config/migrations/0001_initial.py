@@ -15,8 +15,7 @@ def create_initial_data(apps, schema_editor):
                           alarm_data_delay_positive=30, alarm_data_delay_negative=10, machine_image='Machine/MachineImage/test.png',is_apply=1)
     # 初始化加速度传感器
     Model2.objects.create(id=1, sensor_code="Principal-DH5501R-Px", sensor_name='主轴-三相加速度传感器', frequency=100,
-                          channel_number=3, sensor_status=1,sensor_image='Sensor/SensorImage/test.png',operational_status = True,
-                          machine_code='vmc850',machine_name='大恒机床VMC850',config_id=1)
+                          channel_number=3, sensor_status=0,sensor_image='Sensor/SensorImage/test.png',operational_status = True, config_id=1)
     Model3.objects.create(id=1, sensor_name="主轴-三相加速度传感器", channel_name='加速度-X', overrun_times=3,
                           channel_field='AcceleratedSpeed_X', is_monitor=1, channel_id=1)
     Model3.objects.create(id=2, sensor_name="主轴-三相加速度传感器", channel_name='加速度-Y', overrun_times=3,
@@ -25,14 +24,14 @@ def create_initial_data(apps, schema_editor):
                           channel_field='AcceleratedSpeed_Z', is_monitor=1, channel_id=1)
     # 初始化电流传感器
     Model2.objects.create(id=2, sensor_code="Principal-KXT237I-VD", sensor_name='主轴-三相交流电流传感器', frequency=100,
-                          channel_number=3,  sensor_status=1, sensor_image='Sensor/SensorImage/test.png',operational_status = True,
-                          machine_code='vmc850',machine_name='大恒机床VMC850',config_id=1)
+                          channel_number=3,  sensor_status=0, sensor_image='Sensor/SensorImage/test.png',operational_status = True,config_id=1)
     Model3.objects.create(id=4, sensor_name="主轴-三相交流电流传感器", channel_name='电流-U', overrun_times=3,
                           channel_field='Current_X', is_monitor=1, channel_id=2)
     Model3.objects.create(id=5, sensor_name="主轴-三相交流电流传感器", channel_name='电流-V', overrun_times=3,
                           channel_field='Current_Y', is_monitor=1, channel_id=2)
     Model3.objects.create(id=6, sensor_name="主轴-三相交流电流传感器", channel_name='电流-W', overrun_times=3,
                           channel_field='Current_Z', is_monitor=1, channel_id=2)
+
 
 class Migration(migrations.Migration):
     initial = True
@@ -48,10 +47,8 @@ class Migration(migrations.Migration):
                 ('frequency', models.IntegerField(null=True)),
                 ('channel_number', models.IntegerField(null=True)),
                 ('remark', models.CharField(max_length=32, null=True)),
-                ('sensor_status', models.IntegerField(default=2)),
+                ('sensor_status', models.BooleanField(default=2)),
                 ('operational_status',models.BooleanField(default=True)),
-                ('machine_code', models.CharField(max_length=32, null=True)),
-                ('machine_name', models.CharField(max_length=32, null=True)),
                 ('config_id', models.IntegerField(default=1)),
                 ('sensor_image', models.ImageField(null=True, upload_to='Sensor/')),
 
@@ -80,6 +77,7 @@ class Migration(migrations.Migration):
             name='channelConfig',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('sensor_code', models.CharField(max_length=32, null=True)),
                 ('sensor_name', models.CharField(max_length=32, null=True)),
                 ('channel_name', models.CharField(max_length=32, null=True)),
                 ('overrun_times', models.IntegerField(null=True)),
