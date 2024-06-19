@@ -5,29 +5,27 @@ import django.db.models.deletion
 
 
 def create_initial_data(apps, schema_editor):
-    Model1 = apps.get_model('Method_Config', 'methodConfig')
+    Model1 = apps.get_model('Method_Config', 'algorithmConfig')
     Model2 = apps.get_model('Method_Config', 'componentConfig')
     Model3 = apps.get_model('Method_Config', 'algorithmChannel')
 
     Model1.objects.create(id=1, algorithm_code='', algorithm_name='主轴-SVM', algorithm_channel_number='3',
-                          algorithm_file='AlgorithmFile/test.png')
+                          algorithm_file='AlgorithmFile/test.py')
     Model1.objects.create(id=2, algorithm_code='', algorithm_name='主轴-DL', algorithm_channel_number='3',
-                          algorithm_file='AlgorithmFile/test.png')
+                          algorithm_file='AlgorithmFile/test.py')
     Model1.objects.create(id=3, algorithm_code='', algorithm_name='减速器-SVM', algorithm_channel_number='3',
-                          algorithm_file='AlgorithmFile/test.png')
+                          algorithm_file='AlgorithmFile/test.py')
     Model1.objects.create(id=4, algorithm_code='', algorithm_name='减速器-DL', algorithm_channel_number='3',
-                          algorithm_file='AlgorithmFile/test.png')
+                          algorithm_file='AlgorithmFile/test.py')
     Model1.objects.create(id=5, algorithm_code='', algorithm_name='减速器-CNC', algorithm_channel_number='3',
-                          algorithm_file='AlgorithmFile/test.png')
+                          algorithm_file='AlgorithmFile/test.py')
     # 初始化部件-主轴
     Model2.objects.create(id=1, config_id=1, machine_code='vmc850', machine_name='大恒机床VMC850',
                           component_code='vmc850-主轴电机', component_name='主轴电机', algorithm_id=1,
-                          algorithm_name='主轴-SVM', algorithm_channel='加速度-X,加速度-Y,加速度-Z',
-                          component_status='正常', monitor_status='1')
+                          algorithm_name='主轴-SVM', component_status='正常', monitor_status='1')
     Model2.objects.create(id=2, config_id=1, machine_code='vmc850', machine_name='大恒机床VMC850',
                           component_code='vmc850-减速器', component_name='减速器',
-                          algorithm_id=3, algorithm_name='减速器-SVM', algorithm_channel='电流-U,电流-V,电流-W',
-                          component_status='正常', monitor_status='1')
+                          algorithm_id=3, algorithm_name='减速器-SVM', component_status='正常', monitor_status='1')
 
     Model3.objects.create(id=1, sensor_id=2, sensor_name='主轴-三相交流电流传感器', channel_id=4,
                           channel_name='加速度-X',
@@ -65,14 +63,13 @@ class Migration(migrations.Migration):
                 ('component_name', models.CharField(max_length=32, null=True)),
                 ('algorithm_id', models.IntegerField(null=True)),
                 ('algorithm_name', models.CharField(max_length=32, null=True)),
-                ('algorithm_channel', models.CharField(max_length=32, null=True)),
                 ('remark', models.CharField(max_length=32, null=True)),
                 ('component_status', models.CharField(max_length=32, null=True)),
                 ('monitor_status', models.BooleanField(default=False)),
             ],
         ),
         migrations.CreateModel(
-            name='methodConfig',
+            name='algorithmConfig',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('algorithm_code', models.CharField(max_length=32, null=True)),
