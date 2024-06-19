@@ -323,7 +323,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     #传感器新增
     @swagger_auto_schema(
         operation_summary='传感器-新增',
-        request_body=serializer.sensorUpdateserializer,
+        request_body=serializer.sensorAddserializer,
                 responses={200: openapi.Response('successful', serializer.sensorAddserializer)},
         tags=["sensor"],
     )
