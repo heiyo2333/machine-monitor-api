@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 
 # 算法配置-显示
-class AlgorithmListSerializer(serializers.Serializer):
+class algorithmListSerializer(serializers.Serializer):
     id = serializers.IntegerField(help_text="算法id")
     algorithm_code = serializers.CharField(help_text="算法编号", max_length=32)  # 算法编号
     algorithm_name = serializers.CharField(help_text="算法名称", max_length=32)  # 算法名称
@@ -12,7 +12,7 @@ class AlgorithmListSerializer(serializers.Serializer):
 
 
 # 算法配置-新增
-class AlgorithmSerializer(serializers.Serializer):
+class algorithmSerializer(serializers.Serializer):
     algorithm_name = serializers.CharField(help_text="算法名称", max_length=32)  # 算法名称
     algorithm_channel_number = serializers.IntegerField(help_text="算法通道数")  # 算法通道数
     algorithm_file = serializers.FileField(help_text="算法文件")  # 算法文件
@@ -20,7 +20,7 @@ class AlgorithmSerializer(serializers.Serializer):
 
 
 # 算法配置-编辑
-class EditAlgorithmSerializer(serializers.Serializer):
+class editAlgorithmSerializer(serializers.Serializer):
     id = serializers.IntegerField(help_text="算法id")
     algorithm_name = serializers.CharField(help_text="算法名称", max_length=32)  # 算法名称
     algorithm_channel_number = serializers.IntegerField(help_text="算法通道数")  # 算法通道数

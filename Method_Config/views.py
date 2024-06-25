@@ -87,7 +87,7 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
             openapi.Parameter('current', openapi.IN_QUERY, description='当前页面号', type=openapi.TYPE_INTEGER,
                               required=True),
         ],
-        responses={200: openapi.Response('successful', serializer.AlgorithmListSerializer)},
+        responses={200: openapi.Response('successful', serializer.algorithmListSerializer)},
         tags=["algorithm"],
     )
     @action(detail=False, methods=['get'])
@@ -127,8 +127,8 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
     # 算法配置-新增
     @swagger_auto_schema(
         operation_summary='算法配置-新增',
-        request_body=serializer.AlgorithmSerializer,
-        responses={200: openapi.Response('successful', serializer.AlgorithmSerializer), 500: '该id已存在'},
+        request_body=serializer.algorithmSerializer,
+        responses={200: openapi.Response('successful', serializer.algorithmSerializer), 500: '该id已存在'},
         tags=["algorithm"],
     )
     @action(detail=False, methods=['post'])
@@ -187,7 +187,7 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
     # 算法配置-编辑
     @swagger_auto_schema(
         operation_summary='算法配置-编辑',
-        request_body=serializer.EditAlgorithmSerializer,
+        request_body=serializer.editAlgorithmSerializer,
         responses={200: '算法配置修改成功'},
         tags=["algorithm"],
     )
