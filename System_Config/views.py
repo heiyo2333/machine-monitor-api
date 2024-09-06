@@ -1,8 +1,14 @@
 import json
+from io import BytesIO
+import re
+from urllib.parse import urlparse
+import requests
 import os
 import socket
 import serial.tools.list_ports
-from django.core.files.base import ContentFile
+from rest_framework.response import Response
+from django.core.files.base import ContentFile, File
+from django.core.files.storage import default_storage
 from django.db.models import Q
 from django.http import JsonResponse
 from django.utils.crypto import get_random_string
@@ -14,12 +20,23 @@ from drf_yasg import openapi
 from rest_framework.decorators import action, api_view
 from rest_framework import status
 import Method_Config
+from MachineMonitorApi import settings
 from Method_Config.models import componentConfig
 from . import models, serializer
 from .serializer import ConfigListSerializer, ConfigInformationSerializer, channelListSerializer, \
     ConfigUpdateSerializer, sensorUpdateserializer
 from .models import sensorConfig, channelConfig
 
+def is_valid_url(url):
+    regex = re.compile(
+        r'^(?:http|ftp)s?://' # http:// 或 https://
+        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|' # 域名
+        r'localhost|' # localhost
+        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|' # IPv4
+        r'\[?[A-F0-9]*:[A-F0-9:]+\]?)' # IPv6
+        r'(?::\d+)?' # 端口
+        r'(?:/?|[/?]\S+)$', re.IGNORECASE)
+    return re.match(regex, url) is not None
 def get_local_ip():
     hostname = socket.gethostname()
     local_ip = socket.gethostbyname(hostname)
@@ -33,6 +50,26 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     # 返回数据库所有对象
     def get_queryset(self):
         return models.systemConfig.objects.all()
+
+    # 上传图片
+    @swagger_auto_schema(
+        operation_summary='上传图片',
+        request_body=serializer.uploadImageSerializer,
+        responses={200: openapi.Response('successful')},
+        tags=["config"],
+    )
+    @action(detail=False, methods=['post'])
+    def uploadImage(self, request):
+        image = serializer.uploadImageSerializer(data=request.data)
+        if image.is_valid():
+            image_url = f"http://{get_local_ip()}:8000" + image.save()
+
+        response = {
+            'data': image_url,
+            'status': 200,
+            'message': '图片上传成功!'
+        }
+        return JsonResponse(response)
 
     # 新增配置
     @swagger_auto_schema(
@@ -54,27 +91,53 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         database_name = self.request.data.get('database_name')
         alarm_data_delay_positive = self.request.data.get('alarm_data_delay_positive')
         alarm_data_delay_negative = self.request.data.get('alarm_data_delay_negative')
-        machine_image = self.request.data.get('machine_image')
-        if machine_image.name.endswith('.png'):
-            models.systemConfig.objects.create(machine_code=machine_code,
-                                               machine_name=machine_name,
-                                               machine_type=machine_type,
-                                               machine_description=machine_description,
-                                               manager=manager,
-                                               machine_ip=machine_ip,
-                                               machine_port=machine_port,
-                                               tool_number=tool_number,
-                                               database_name=database_name,
-                                               alarm_data_delay_positive=alarm_data_delay_positive,
-                                               alarm_data_delay_negative=alarm_data_delay_negative,
-                                               machine_image=machine_image)
-            response = {
-                'status': 200,
-                'message': '新增配置成功'
-            }
-            return JsonResponse(response)
-        else:
-            return JsonResponse({'status': 500, 'message': 'Image file must be in PNG format'})
+        # 获取文件URL地址
+        machine_image_url = self.request.data.get('machine_image')
+
+        # 如果获取的URL地址是有效的
+        # 从请求数据中获取图片的URL
+        machine_image_url = request.data.get('machine_image')
+
+        # 其他传感器数据的获取...
+
+        if machine_image_url:
+            try:
+                # 从URL下载图片
+                response = requests.get(machine_image_url)
+                response.raise_for_status()  # 如果请求返回错误状态码则抛出异常
+
+                # 将响应内容转换为类似文件的对象
+                image_file = BytesIO(response.content)
+                file_name = machine_image_url.split('/')[-1]
+                machine_image_file = File(image_file, name=file_name)
+
+                # 创建带有下载图片的 systemConfig 实例
+                models.systemConfig.objects.create(
+                    machine_code=machine_code,
+                    machine_name=machine_name,
+                    machine_type=machine_type,
+                    machine_description=machine_description,
+                    manager=manager,
+                    machine_ip=machine_ip,
+                    machine_port=machine_port,
+                    tool_number=tool_number,
+                    database_name=database_name,
+                    alarm_data_delay_positive=alarm_data_delay_positive,
+                    alarm_data_delay_negative=alarm_data_delay_negative,
+                    machine_image=machine_image_file
+                )
+                return Response({"status": "传感器添加成功"}, status=201)
+
+            except requests.RequestException as e:
+                # 处理与HTTP请求相关的错误
+                return Response({"error": f"下载图片失败: {str(e)}"}, status=400)
+            except Exception as e:
+                # 处理其他可能的错误
+                return Response({"error": f"发生错误: {str(e)}"}, status=500)
+
+        return Response({"error": "未提供图片URL"}, status=400)
+
+
     #修改配置
     @swagger_auto_schema(
         operation_summary='修改配置',
@@ -135,6 +198,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
                 'status': 500,
                 'message': '数据无效'
             })
+
     # 删除配置
     @swagger_auto_schema(
         operation_summary='删除配置',
@@ -149,7 +213,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         id = g.validated_data.get('id')
         sensor_configs = models.sensorConfig.objects.filter(config_id=id)
         for sensor_config in sensor_configs:
-            channels=models.channelConfig.objects.filter(channel=sensor_config)
+            channels = models.channelConfig.objects.filter(channel=sensor_config)
             if channels.filter(is_monitor=True).exists():
                 return JsonResponse({'status': 500, 'message': '不能删除，存在正在监控的通道配置'})
 
@@ -163,6 +227,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             'message': '删除配置成功'
         }
         return JsonResponse(response)
+
     #应用配置
     @swagger_auto_schema(
         operation_summary='应用配置',
@@ -189,6 +254,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
                 'status': 500,
                 'message': '数据无效'
             })
+
     #拉取配置信息
     @swagger_auto_schema(
         operation_summary='获取配置列表',
@@ -207,8 +273,8 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
                     "label": f'配置{count}',
                     'key': i.id,
                     'is_apply': i.is_apply,
-                    'machine_name':i.machine_name,
-                    'machine_code':i.machine_code
+                    'machine_name': i.machine_name,
+                    'machine_code': i.machine_code
                 }
             )
             count += 1
@@ -218,6 +284,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             'message': '配置列表获取成功',
         }
         return JsonResponse(response)
+
     #查询配置信息
     @swagger_auto_schema(
         operation_summary='配置信息',
@@ -250,7 +317,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
                 'database_name': configuration1.database_name,
                 'alarm_data_delay_positive': configuration1.alarm_data_delay_positive,
                 'alarm_data_delay_negative': configuration1.alarm_data_delay_negative,
-                'machine_image': f"http://{get_local_ip()}:8000"+configuration1.machine_image.url if configuration1.machine_image else None
+                'machine_image': f"http://{get_local_ip()}:8000" + configuration1.machine_image.url if configuration1.machine_image else None
             }
             response = {
                 'data': data,
@@ -258,8 +325,10 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
                 'message': '配置信息，显示成功',
             }
             return JsonResponse(response)
+
     def sensor_get_queryset(self):
         return models.sensorConfig.objects.all()
+
     #传感器查询
     @swagger_auto_schema(
         operation_summary='传感器 > 查询',
@@ -278,14 +347,19 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['get'])
     def sensorDisplay(self, request):
         pageSize = int(self.request.query_params.get('pageSize'))
+
         current = int(self.request.query_params.get('current'))
-        config_id=self.request.query_params.get('config_id')
+        pageSize = int(pageSize)
+        current = int(current)
+        config_id = self.request.query_params.get('config_id')
+        print('pageSize', pageSize, 'current', current, 'config_id', config_id)
 
         first = (current - 1) * pageSize
         last = current * pageSize
         sensor = self.sensor_get_queryset()
         if config_id is not None:
-            if sensor.filter(config_id=config_id).exists() == 0 or models.systemConfig.objects.filter(id=config_id).exists() == 0:
+            if sensor.filter(config_id=config_id).exists() == 0 or models.systemConfig.objects.filter(
+                    id=config_id).exists() == 0:
                 config_id = models.systemConfig.objects.filter(is_apply=True).first().id
             sensor_magazine_all = sensor.filter(config_id=config_id)
         else:
@@ -297,8 +371,8 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         for x in sensor_magazine_all:
             result_list.append(
                 {
-                    'id':x.id,
-                    'sensor_code':  x.sensor_code,
+                    'id': x.id,
+                    'sensor_code': x.sensor_code,
                     'sensor_name': x.sensor_name,
                     'frequency': x.frequency,
                     'channel_number': x.channel_number,
@@ -307,7 +381,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
                     'machine_code': models.systemConfig.objects.get(id=config_id).machine_code,
                     'machine_name': models.systemConfig.objects.get(id=config_id).machine_name,
                     'config_id': x.config_id,
-                    'sensor_image': f"http://{get_local_ip()}:8000"+x.sensor_image.url if x.sensor_image else None
+                    'sensor_image': f"http://{get_local_ip()}:8000" + x.sensor_image.url if x.sensor_image else None
                 }
             )
         response_list = {
@@ -320,11 +394,12 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             'message': 'successful',
         }
         return JsonResponse(response)
+
     #传感器新增
     @swagger_auto_schema(
         operation_summary='传感器-新增',
         request_body=serializer.sensorAddserializer,
-                responses={200: openapi.Response('successful', serializer.sensorAddserializer)},
+        responses={200: openapi.Response('successful', serializer.sensorAddserializeresponses={200: openapi.Response('successful', serializer.sensorAddserializer)},
         tags=["sensor"],
     )
     @action(detail=False, methods=['post'])
@@ -334,37 +409,63 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         frequency = self.request.data.get('frequency')
         channel_number = self.request.data.get('channel_number')
         remark = self.request.data.get('remark')
+        config_id = self.request.data.get('config_id')
         # channel_name = self.request.data.get('channel_name')
         # overrun_times = self.request.data.get('overrun_times')
         # channel_field = self.request.data.get('channel_field')
-        sensor_image = self.request.data.get('sensor_image')
-        # machine_name=self.request.data.get('machine_name')
-        # machien_code=self.request.data.get('machien_code')
-        # config_id = self.request.data.get('config_id')
-        config=models.systemConfig.objects.filter(is_apply=True)
-        if sensor_image.name.endswith('.png'):
-            sensor_instance = models.sensorConfig.objects.create(sensor_code=sensor_code,
-                                                                 sensor_name=sensor_name,
-                                                                 frequency=frequency,
-                                                                 channel_number=channel_number,
-                                                                 remark=remark,
-                                                                 sensor_image=sensor_image,
-                                                                 # machine_name=config.machine_name,
-                                                                 # machine_code=config.machien_code,
-                                                                 config_id=config.id
-                                                                 )
-            for m in range(1, int(channel_number) + 1):
-                models.channelConfig.objects.create(
+        # 获取文件URL地址
+        # 从请求数据中获取图片的URL
+        sensor_image_url = request.data.get('sensor_image')
+        # 验证 URL
+        if not is_valid_url(sensor_image_url):
+            return Response({"error": "无效的图片URL"}, status=400)
+        # 确保 URL 以 'http://' 或 'https://' 开头
+        if sensor_image_url and not (
+                sensor_image_url.startswith('http://') or sensor_image_url.startswith('https://')):
+            sensor_image_url = 'http://' + sensor_image_url
+
+
+
+        if sensor_image_url:
+            try:
+                # 从URL下载图片
+                response = requests.get(sensor_image_url)
+                response.raise_for_status()  # 如果请求返回错误状态码则抛出异常
+
+                # 将响应内容转换为类似文件的对象
+                image_file = BytesIO(response.content)
+                file_name = sensor_image_url.split('/')[-1]
+                sensor_image_file = File(image_file, name=file_name)
+
+                # 创建带有下载图片的 systemConfig 实例
+                models.sensorConfig.objects.create(
+                    sensor_code=sensor_code,
                     sensor_name=sensor_name,
-                    channel_id=sensor_instance.id
+                    frequency=frequency,
+                    channel_number=channel_number,
+                    remark=remark,
+                    sensor_image=sensor_image_file
                 )
-            response = {
-                'status': 200,
-                'message': '传感器新增成功'
-            }
-            return JsonResponse(response)
-        else:
-            return JsonResponse({'status': 500, 'message': 'Image file must be in PNG format'})
+                for m in range(1, int(channel_number) + 1):
+                    models.channelConfig.objects.create(
+                        sensor_name=sensor_name,
+                        channel_id=sensor_name.id
+                    )
+                return Response({"status": "传感器添加成功"}, status=200)
+
+            except requests.RequestException as e:
+                # 处理与HTTP请求相关的错误
+                return Response({"error": f"下载图片失败: {str(e)}"}, status=400)
+            except Exception as e:
+                # 处理其他可能的错误
+                return Response({"error": f"发生错误: {str(e)}"}, status=500)
+        return Response({"error": "未提供图片URL"}, status=400)
+
+
+
+    # else:
+    #     return JsonResponse({'status': 500, 'message': 'Image file must be in PNG format'})
+
     #传感器编辑
     @swagger_auto_schema(
         operation_summary='传感器-编辑',
@@ -399,7 +500,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             sensor.sensor_code = sensor_code
             sensor.sensor_name = sensor_name
             sensor.frequency = frequency
-            sensor.remark=remark
+            sensor.remark = remark
             if models.systemConfig.objects.filter(id=config_id).exists():
                 sensor.config_id = config_id
             sensor.save()
@@ -435,7 +536,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         id = g.validated_data.get('id')
         channels = models.channelConfig.objects.filter(channel=id)
         if channels.filter(is_monitor=True).exists():
-            return JsonResponse({'status': 500, 'message': '不能删除，存在正在监控的通道配置'},)
+            return JsonResponse({'status': 500, 'message': '不能删除，存在正在监控的通道配置'}, )
 
         else:
             models.sensorConfig.objects.filter(id=id).delete()
@@ -444,6 +545,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
                 'message': '删除成功'
             }
             return JsonResponse(response)
+
     #开始监控
     @swagger_auto_schema(
         operation_summary='开始监控',
@@ -509,7 +611,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             channel.save()
 
             # 将传感器状态置1
-            if models.channelConfig.objects.filter(Q(channel_id=channel.channel_id) & Q(is_monitor=True)).count() ==0:
+            if models.channelConfig.objects.filter(Q(channel_id=channel.channel_id) & Q(is_monitor=True)).count() == 0:
                 sensorconfig = channel.channel  # 主表实例
                 sensorconfig.sensor_status = 0
                 sensorconfig.save()
@@ -531,7 +633,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     def channelConfigupdate(self, request):
         id = self.request.data.get('id')
         if models.channelConfig.objects.filter(id=id).exists():
-            if models.channelConfig.objects.get(id=id).is_monitor ==1:
+            if models.channelConfig.objects.get(id=id).is_monitor == 1:
                 response = {
                     'status': 500,
                     'message': '请先关闭通道监控'
@@ -557,6 +659,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             'message': '该通道id不存在'
         }
         return JsonResponse(response)
+
     #通道配置显示
     @swagger_auto_schema(
         operation_summary='通道配置-显示',
@@ -579,7 +682,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         for channel in channel_info:
             print(channel.channel_name)
             list.append({
-                'sensor_code': channel.sensor_code,
+                'sensor _code': channel.sensor_code,
                 'sensor_name': channel.sensor_name,
                 'channel_name': channel.channel_name,
                 'overrun_times': channel.overrun_times,
