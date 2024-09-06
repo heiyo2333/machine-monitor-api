@@ -28,7 +28,7 @@ class sensorConfig(models.Model):
     sensor_status = models.BooleanField(default=0) #状态 1：开启 0：关闭
     operational_status=models.BooleanField(default=True) # 运行状态
     sensor_image = models.ImageField(null=True, upload_to='Sensor/SensorImage/')  # 传感器图片
-    config_id=models.CharField(max_length=32, null=True)
+    config_id=models.CharField(max_length=32)
 
 
 # 通道配置

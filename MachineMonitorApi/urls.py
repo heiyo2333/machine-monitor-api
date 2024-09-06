@@ -23,12 +23,14 @@ from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from rest_framework.documentation import include_docs_urls
 
+import System_Config
 from Equipment_Status.views import EquipmentStatusViewSet
 from Method_Config.views import MethodConfigViewSet
-from System_Config.views import SystemConfigViewSet
 
 from django.conf import settings
 from django.conf.urls.static import static
+
+from System_Config.views import SystemConfigViewSet
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -57,7 +59,6 @@ urlpatterns = [
     path("swagger/", schema_view.with_ui("swagger", cache_timeout=0), name="schema-swagger"),
     path("redoc/", schema_view.with_ui("redoc", cache_timeout=0), name="schema-redoc"),
 
-    # path('upload/', Adaptive_Learning.views.upload_file),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
