@@ -31,7 +31,7 @@ def is_valid_url(url):
     regex = re.compile(
         r'^(?:http|ftp)s?://' # http:// 或 https://
         r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|' # 域名
-        r'localhost|' # localhost
+            r'localhost|' # localhost
         r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|' # IPv4
         r'\[?[A-F0-9]*:[A-F0-9:]+\]?)' # IPv6
         r'(?::\d+)?' # 端口
@@ -399,7 +399,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     @swagger_auto_schema(
         operation_summary='传感器-新增',
         request_body=serializer.sensorAddserializer,
-        responses={200: openapi.Response('successful', serializer.sensorAddserializeresponses={200: openapi.Response('successful', serializer.sensorAddserializer)},
+        responses={200: openapi.Response('successful', serializer.sensorAddserializer)},
         tags=["sensor"],
     )
     @action(detail=False, methods=['post'])
