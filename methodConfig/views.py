@@ -345,20 +345,19 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         sensors = systemConfig.models.sensorConfig.objects.filter(config_id=config_id, sensor_status=True)
         request_list = []
         for i in sensors:
-            sensor_data = {
-                'sensor_id': i.id,
-                'sensor_name': i.sensor_name,
-                'channels': []
+            request_list = {
+                'value': i.id,
+                'label': i.sensor_name,
+                'children': []
             }
             channels = systemConfig.models.channelConfig.objects.filter(channel_id=i.id)
             for j in channels:
-                sensor_data['channels'].append(
-                    {
-                        'channel_id': j.channel_id,
-                        'channel_name': j.channel_name,
+                child_channel = {
+                        'value': j.id,
+                        'label': j.channel_name,
                     }
-                )
-            request_list.append(sensor_data)
+                request_list['children'].append(child_channel)
+
         response_list = {
             'list': request_list,
             'total': sensors.count(),
@@ -584,41 +583,42 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         tags=["signal"], )
     @action(detail=False, methods=['get'])
     def signalSelect(self, request):
-        system = systemConfig.models.systemConfig.objects.all()
+        system_config = systemConfig.models.systemConfig.objects.all()
         request_list = []
-        for i in system:
-            machine_data = {
-                'machine_name': i.machine_name,
-                'components': []
+
+        for i in system_config:
+            request_list = {
+                'value': i.id,
+                'label': i.machine_name + "_" + i.manager,
+                'children': [],
             }
             components = models.componentConfig.objects.filter(config_id=i.id)
             for j in components:
-                component_data = {
-                    'component_name': j.component_name,
-                    'sensors': []
+                child_component = {
+                    'value': j.id,
+                    'label': j.component_name,
+                    'children': []
                 }
-                sensors = models.algorithmChannel.objects.filter(algorithm_channel_id=j.id)
+                request_list['children'].append(child_component)
+                sensors = systemConfig.models.sensorConfig.objects.filter(config_id=j.config_id)
                 for k in sensors:
-                    sensor_data = {
-                        'sensor_name': k.sensor_name,
-                        'sensor_id': k.sensor_id,
-                        'channels': []
+                    child_sensor = {
+                        'value': k.id,
+                        'label': k.sensor_name,
+                        'children': []
                     }
-                    channels = models.algorithmChannel.objects.filter(sensor_id=k.sensor_id)
-                    for l in channels:
-                        sensor_data['channels'].append(
-                            {
-                                'channel_name': l.channel_name,
-                                'channel_id': l.channel_id,
-                            }
-                        )
-                    component_data['sensors'].append(sensor_data)
-                machine_data['components'].append(component_data)
-            request_list.append(machine_data)
+                    child_component['children'].append(child_sensor)
+                    channels = models.algorithmChannel.objects.filter(algorithm_channel_id=k.id)
+                    for h in channels:
+                        child_channel = {
+                            'value': h.id,
+                            'label': h.channel_name,
+                        }
+                        child_sensor['children'].append(child_channel)
 
         response_list = {
             'list': request_list,
-            'total': system.count(),
+            'total': system_config.count(),
         }
         response = {
             'data': response_list,
