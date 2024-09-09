@@ -24,8 +24,9 @@ class sensorConfig(models.Model):
     sensor_name = models.CharField(max_length=32, null=True)  # 传感器名称
     frequency = models.IntegerField(null=True)  # 采样频率
     channel_number = models.IntegerField(null=True)  # 通道数
+    measurement = models.CharField(max_length=32, null=True)  # 传感器数据库字段
     remark = models.CharField(max_length=32, null=True)  # 备注
-    sensor_status = models.BooleanField(default=0)  #状态 1：开启 0：关闭
+    sensor_status = models.BooleanField(default=0)  # 状态 1：开启 0：关闭
     operational_status = models.BooleanField(default=True)  # 运行状态
     sensor_image = models.ImageField(null=True, upload_to='Sensor/SensorImage/')  # 传感器图片
     config_id = models.CharField(max_length=32, null=True)
@@ -37,10 +38,11 @@ class channelConfig(models.Model):
     sensor_code = models.CharField(max_length=32, null=True)  # 传感器名称
     channel_name = models.CharField(null=True, max_length=32)  # 通道名称
     overrun_times = models.IntegerField(null=True)  # 超限次数
+    unit = models.CharField(max_length=32, null=True)  # 单位
     channel_field = models.CharField(max_length=32, null=True)  # 对应字段
     is_monitor = models.BooleanField(default=False)  # 是否监控
     channel = models.ForeignKey(sensorConfig, db_constraint=True, on_delete=models.CASCADE)  # 外键
-    remark = models.CharField(max_length=32, null=True)# 备注
+    remark = models.CharField(max_length=32, null=True)  # 备注
 
 
 # class context(models.Model):
