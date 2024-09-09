@@ -67,13 +67,10 @@ class editComponentSerializer(serializers.Serializer):
 
 # 部件配置-新增
 class addComponentSerializer(serializers.Serializer):
-    config_id = serializers.CharField(help_text="系统配置id", max_length=32)  # 系统配置id
     component_name = serializers.CharField(help_text="部件名称", max_length=32)  # 部件名称
     algorithm_id = serializers.IntegerField(help_text="算法id")  # 算法id
     remark = serializers.CharField(help_text="备注", max_length=32, required=False)  # 备注
-    # 算法输入通道数据： [{"sensor_id":1,"channel_id":2},{"sensor_id":2,"channel_id":5},{"sensor_id":1,"channel_id":3}]
     algorithm_channel_data = serializers.CharField(help_text="算法输入通道数据")
-
 
 # 上传文件
 class uploadFileSerializer(serializers.Serializer):

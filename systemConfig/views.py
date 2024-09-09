@@ -120,7 +120,11 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
 
         n.machine_image.save(f'{machine_code}.png', file_obj, save=True)
 
-        return Response({"status": "配置新增成功"}, status=200)
+        response = {
+            'status': 200,
+            'message': '新增配置成功'
+        }
+        return JsonResponse(response)
 
     #修改配置
     @swagger_auto_schema(
@@ -147,7 +151,19 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             alarm_data_delay_negative = serializer.validated_data['alarm_data_delay_negative']
             machine_image_path = serializer.validated_data.get('machine_image')
             systemconfig = models.systemConfig.objects.get(id=config_id)
-
+            # 更新其他字段
+            systemconfig.machine_code = machine_code
+            systemconfig.machine_name = machine_name
+            systemconfig.machine_type = machine_type
+            systemconfig.machine_description = machine_description
+            systemconfig.manager = manager
+            systemconfig.machine_ip = machine_ip
+            systemconfig.machine_port = machine_port
+            systemconfig.tool_number = tool_number
+            systemconfig.database_name = database_name
+            systemconfig.alarm_data_delay_positive = alarm_data_delay_positive
+            systemconfig.alarm_data_delay_negative = alarm_data_delay_negative
+            systemconfig.save()
             # 更新图片文件
             # 删除现有文件
             if systemconfig.machine_image and os.path.isfile(systemconfig.machine_image.path):
@@ -163,29 +179,16 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
 
             n.machine_image.save(f'{machine_code}.png', file_obj, save=True)
 
-            # 更新其他字段
-            systemconfig.machine_code = machine_code
-            systemconfig.machine_name = machine_name
-            systemconfig.machine_type = machine_type
-            systemconfig.machine_description = machine_description
-            systemconfig.manager = manager
-            systemconfig.machine_ip = machine_ip
-            systemconfig.machine_port = machine_port
-            systemconfig.tool_number = tool_number
-            systemconfig.database_name = database_name
-            systemconfig.alarm_data_delay_positive = alarm_data_delay_positive
-            systemconfig.alarm_data_delay_negative = alarm_data_delay_negative
-            systemconfig.save()
             response = {
                 'status': 200,
                 'message': '修改配置成功'
             }
-            return JsonResponse(response)
         else:
-            return JsonResponse({
+            response = {
                 'status': 500,
                 'message': '数据无效'
-            })
+            }
+        return JsonResponse(response)
 
     # 删除配置
     @swagger_auto_schema(
@@ -339,8 +342,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         current = int(self.request.query_params.get('current'))
         pageSize = int(pageSize)
         current = int(current)
-        config_id = self.request.query_params.get('config_id')
-        print('pageSize', pageSize, 'current', current, 'config_id', config_id)
+        config_id = models.systemConfig.objects.get(is_apply=1).id
 
         first = (current - 1) * pageSize
         last = current * pageSize
@@ -365,6 +367,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
                     'frequency': x.frequency,
                     'channel_number': x.channel_number,
                     'sensor_status': x.sensor_status,
+                    'measurement': x.measurement,
                     'remark': x.remark,
                     'machine_code': models.systemConfig.objects.get(id=config_id).machine_code,
                     'machine_name': models.systemConfig.objects.get(id=config_id).machine_name,
@@ -393,10 +396,17 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['post'])
     def addSensor(self, request):
         sensor_code = self.request.data.get('sensor_code')
+        if models.sensorConfig.objects.filter(sensor_code=sensor_code).exists():
+            response = {
+                'status': 500,
+                'message': '传感器编号不能重复'
+            }
+            return JsonResponse(response)
         sensor_name = self.request.data.get('sensor_name')
         frequency = self.request.data.get('frequency')
         channel_number = self.request.data.get('channel_number')
         remark = self.request.data.get('remark')
+        measurement = self.request.data.get('measurement')
         config_id = self.request.data.get('config_id')
         # channel_name = self.request.data.get('channel_name')
         # overrun_times = self.request.data.get('overrun_times')
@@ -410,7 +420,9 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             sensor_name=sensor_name,
             frequency=frequency,
             channel_number=channel_number,
-            remark=remark
+            remark=remark,
+            measurement=measurement,
+            config_id=config_id
         )
 
         # 从URL下载文件内容
@@ -421,14 +433,18 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
 
         k = models.sensorConfig.objects.get(sensor_code=sensor_code)
 
-        k.machine_image.save(f'{sensor_code}.png', file_obj, save=True)
+        k.sensor_image.save(f'{sensor_code}.png', file_obj, save=True)
 
         for m in range(1, int(channel_number) + 1):
             models.channelConfig.objects.create(
-                sensor_name=sensor_name,
-                channel_id=sensor_name.id
+                sensor_name=h.sensor_name,
+                channel_id=h.id
             )
-        return Response({"status": "传感器添加成功"}, status=200)
+        response = {
+            'status': 200,
+            'message': '传感器新增成功'
+        }
+        return JsonResponse(response)
 
     # else:
     #     return JsonResponse({'status': 500, 'message': 'Image file must be in PNG format'})
@@ -446,12 +462,29 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         if serializer.is_valid():
             id = serializer.validated_data['id']
             sensor_code = serializer.validated_data['sensor_code']
+            if models.sensorConfig.objects.filter(sensor_code=sensor_code).exists():
+                response = {
+                    'status': 500,
+                    'message': '传感器编号不能重复'
+                }
+                return JsonResponse(response)
             sensor_name = serializer.validated_data['sensor_name']
             frequency = serializer.validated_data['frequency']
             remark = serializer.validated_data.get('ramark')
             sensor_image_path = serializer.validated_data['sensor_image']
             config_id = serializer.validated_data['config_id']
+            measurement = serializer.validated_data['measurement']
             sensor = models.sensorConfig.objects.get(id=id)
+
+            # 更新其他字段
+            sensor.sensor_code = sensor_code
+            sensor.sensor_name = sensor_name
+            sensor.frequency = frequency
+            sensor.measurement = measurement
+            sensor.remark = remark
+            if models.systemConfig.objects.filter(id=config_id).exists():
+                sensor.config_id = config_id
+            sensor.save()
 
             # 删除现有文件
             if sensor.sensor_image and os.path.isfile(sensor.sensor_image.path):
@@ -466,14 +499,6 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
 
             n.sensor_image.save(f'{sensor_code}.png', file_obj, save=True)
 
-            # 更新其他字段
-            sensor.sensor_code = sensor_code
-            sensor.sensor_name = sensor_name
-            sensor.frequency = frequency
-            sensor.remark = remark
-            if models.systemConfig.objects.filter(id=config_id).exists():
-                sensor.config_id = config_id
-            sensor.save()
             # 通过主表去反查附表
             channel_info = sensor.channelconfig_set.all()
             for channel in channel_info:
@@ -540,9 +565,11 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             # 更新记录为监控状态
             channel.is_monitor = True
             channel.save()
+            print('AAAAAAAAAAAAA')
             sensorconfig = channel.channel  # 主表实例  第二个channel是附表外键的意思
             sensorconfig.sensor_status = 1
             sensorconfig.save()
+
             response = {
                 'status': 200,
                 'message': '开始监控成功'
@@ -579,7 +606,13 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
                 sensorconfig = channel.channel  # 主表实例
                 sensorconfig.sensor_status = 0
                 sensorconfig.save()
-
+                try:
+                    response = requests.get(
+                        'http://192.168.110.133:8000/api/config/sensorDisplay?current=1&pageSize=10')
+                    response.raise_for_status()
+                except requests.RequestException as e:
+                    # 处理请求异常
+                    print(f"Error refreshing the frontend page: {e}")
             response = {
                 'status': 200,
                 'message': '结束监控成功'
@@ -607,11 +640,15 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
                 channel_name = self.request.data.get('channel_name')
                 overrun_times = self.request.data.get('overrun_times')
                 channel_field = self.request.data.get('channel_field')
+                remark = self.request.data.get('remark')
+                unit = self.request.data.get('unit')
 
                 configuration = models.channelConfig.objects.filter(id=id)
                 configuration.update(channel_name=channel_name,
                                      overrun_times=overrun_times,
                                      channel_field=channel_field,
+                                     remark=remark,
+                                     unit=unit
                                      )
                 response = {
                     'status': 200,
@@ -638,20 +675,24 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['get'])
     def channelDisplay(self, request):
-        channel_id = self.request.query_params.get("id")
-        configuration = models.sensorConfig.objects.get(id=channel_id)
+        sensor_id = self.request.query_params.get("id")
+
+        configuration = models.sensorConfig.objects.get(id=sensor_id)
         # 通过主表去反查附表
         channel_info = configuration.channelconfig_set.all()
         list = []
         for channel in channel_info:
             print(channel.channel_name)
             list.append({
-                'sensor _code': channel.sensor_code,
+                'id': channel.id,
+                'sensor_code': channel.sensor_code,
                 'sensor_name': channel.sensor_name,
                 'channel_name': channel.channel_name,
                 'overrun_times': channel.overrun_times,
                 'channel_field': channel.channel_field,
                 'is_monitor': channel.is_monitor,
+                'unit': channel.unit,
+                'remark': channel.remark,
             })
         response = {
             'list': list,

@@ -66,7 +66,7 @@ class ConfigUpdateSerializer(serializers.Serializer):
 
 #删除配置请求
 class ConfigDeleteSerializer(serializers.Serializer):
-    id = serializers.CharField(help_text="ID")
+    id = serializers.CharField(help_text="config_id")
 
 
 #应用配置请求
@@ -107,6 +107,7 @@ class sensorSerializer(serializers.Serializer):
     sensor_name = serializers.CharField(max_length=32, label="传感器名称")  # 传感器名称
     frequency = serializers.IntegerField(label="采样频率")  # 采样频率
     channel_number = serializers.IntegerField(label="通道数")  # 通道数
+    measurement = serializers.CharField(max_length=32, label="传感器数据库字段")
     remark = serializers.CharField(max_length=32, label="备注", required=False)  #备注
     sensor_image = serializers.CharField(label="传感器图片")
     machine_name = serializers.CharField(label="机床名称", max_length=32)
@@ -122,6 +123,7 @@ class sensorQuerysserializer(serializers.Serializer):
     frequency = serializers.IntegerField(label="采样频率")  # 采样频率
     channel_number = serializers.IntegerField(label="通道数")  # 通道数
     sensor_status = serializers.BooleanField(label="传感器状态")  # 通道数
+    measurement = serializers.CharField(max_length=32, label="传感器数据库字段")
     remark = serializers.CharField(max_length=32, label="备注", required=False)  # 备注
     sensor_image = serializers.CharField(label="传感器图片")
     machine_name = serializers.CharField(label="机床名称", max_length=32)
@@ -135,6 +137,7 @@ class sensorAddserializer(serializers.Serializer):
     sensor_name = serializers.CharField(max_length=32, label="传感器名称")  # 传感器名称
     frequency = serializers.IntegerField(label="采样频率")  # 采样频率
     channel_number = serializers.IntegerField(label="通道数")  # 通道数
+    measurement = serializers.CharField(max_length=32, label="传感器数据库字段")
     remark = serializers.CharField(max_length=32, label="备注", required=False)  # 备注
     sensor_image = serializers.CharField(label="传感器图片")
     # machine_name = serializers.CharField(label="机床名称", max_length=32)
@@ -168,7 +171,7 @@ class sensorUpdateserializer(serializers.Serializer):
     sensor_code = serializers.CharField(label="传感器编号", max_length=32)  # 传感器编号
     sensor_name = serializers.CharField(max_length=32, label="传感器名称")  # 传感器名称
     frequency = serializers.IntegerField(label="采样频率")  # 采样频率
-
+    measurement = serializers.CharField(max_length=32, label="传感器数据库字段")
     remark = serializers.CharField(max_length=32, label="备注", required=False)  # 备注
     sensor_image = serializers.CharField(label="传感器图片")
     # machine_name = serializers.CharField(label="机床名称", max_length=32)
@@ -218,6 +221,8 @@ class channelConfigSerializer(serializers.Serializer):
     channel_name = serializers.CharField(label="通道名称", max_length=32)
     overrun_times = serializers.IntegerField(label="超限次数")
     channel_field = serializers.CharField(label="对应字段", max_length=32)
+    unit = serializers.CharField(label="传感器通道单位", max_length=32)
+    remark = serializers.CharField(label="备注", max_length=32)
 
 
 #通道配置显示
@@ -227,6 +232,7 @@ class channelListSerializer(serializers.Serializer):
     channel_name = serializers.CharField(label="通道名称", max_length=32)
     overrun_times = serializers.IntegerField(label="超限次数")
     channel_field = serializers.CharField(label="对应字段", max_length=32)
+    unit = serializers.CharField(label="传感器通道单位", max_length=32)
     is_monitor = serializers.BooleanField(label="是否监控")
 
 

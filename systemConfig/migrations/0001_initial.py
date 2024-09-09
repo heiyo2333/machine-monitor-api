@@ -12,25 +12,28 @@ def create_initial_data(apps, schema_editor):
     Model1.objects.create(id=1, machine_code='vmc850', machine_name='大恒机床VMC850', machine_type='五轴加工中心',
                           machine_description='大恒机床-五轴-VMC850', manager='张三', machine_ip='192.168.110.23',
                           machine_port=7798, tool_number=30, database_name='ComponentMonitor',
-                          alarm_data_delay_positive=30, alarm_data_delay_negative=10, machine_image='Machine/MachineImage/test.png',is_apply=1)
+                          alarm_data_delay_positive=30, alarm_data_delay_negative=10,
+                          machine_image='Machine/MachineImage/test.png', is_apply=1)
     # 初始化加速度传感器
     Model2.objects.create(id=1, sensor_code="Principal-DH5501R-Px", sensor_name='主轴-三相加速度传感器', frequency=100,
-                          channel_number=3, sensor_status=0,sensor_image='Sensor/SensorImage/test.png',operational_status = True, config_id=1)
+                          channel_number=3, sensor_status=1, measurement='current1', sensor_image='Sensor/SensorImage/test.png',
+                          operational_status=True, config_id=1)
     Model3.objects.create(id=1, sensor_name="主轴-三相加速度传感器", channel_name='加速度-X', overrun_times=3,
-                          channel_field='AcceleratedSpeed_X', is_monitor=1, channel_id=1)
+                          channel_field='AcceleratedSpeed_X', unit='A', is_monitor=1, channel_id=1)
     Model3.objects.create(id=2, sensor_name="主轴-三相加速度传感器", channel_name='加速度-Y', overrun_times=3,
-                          channel_field='AcceleratedSpeed_Y', is_monitor=1, channel_id=1)
+                          channel_field='AcceleratedSpeed_Y', unit='A', is_monitor=1, channel_id=1)
     Model3.objects.create(id=3, sensor_name="主轴-三相加速度传感器", channel_name='加速度-Z', overrun_times=3,
-                          channel_field='AcceleratedSpeed_Z', is_monitor=1, channel_id=1)
+                          channel_field='AcceleratedSpeed_Z', unit='A', is_monitor=1, channel_id=1)
     # 初始化电流传感器
-    Model2.objects.create(id=2, sensor_code="Principal-KXT237I-VD", sensor_name='主轴-三相交流电流传感器', frequency=100,
-                          channel_number=3,  sensor_status=0, sensor_image='Sensor/SensorImage/test.png',operational_status = True,config_id=1)
+    Model2.objects.create(id=2, sensor_code="Principal-KXT237I-VD", sensor_name='主轴-三相交流电流传感器',
+                          frequency=100, channel_number=3, sensor_status=1, measurement='vibrate1', sensor_image='Sensor/SensorImage/test.png',
+                          operational_status=True, config_id=1)
     Model3.objects.create(id=4, sensor_name="主轴-三相交流电流传感器", channel_name='电流-U', overrun_times=3,
-                          channel_field='Current_X', is_monitor=1, channel_id=2)
+                          channel_field='Current_X', unit='A', is_monitor=1, channel_id=2)
     Model3.objects.create(id=5, sensor_name="主轴-三相交流电流传感器", channel_name='电流-V', overrun_times=3,
-                          channel_field='Current_Y', is_monitor=1, channel_id=2)
+                          channel_field='Current_Y', unit='A', is_monitor=1, channel_id=2)
     Model3.objects.create(id=6, sensor_name="主轴-三相交流电流传感器", channel_name='电流-W', overrun_times=3,
-                          channel_field='Current_Z', is_monitor=1, channel_id=2)
+                          channel_field='Current_Z', unit='A', is_monitor=1, channel_id=2)
 
 
 class Migration(migrations.Migration):
@@ -47,8 +50,9 @@ class Migration(migrations.Migration):
                 ('frequency', models.IntegerField(null=True)),
                 ('channel_number', models.IntegerField(null=True)),
                 ('remark', models.CharField(max_length=32, null=True)),
+                ('measurement', models.CharField(max_length=32, null=True)),
                 ('sensor_status', models.BooleanField(default=2)),
-                ('operational_status',models.BooleanField(default=True)),
+                ('operational_status', models.BooleanField(default=True)),
                 ('config_id', models.IntegerField(default=1)),
                 ('sensor_image', models.ImageField(null=True, upload_to='Sensor/')),
 
@@ -83,7 +87,10 @@ class Migration(migrations.Migration):
                 ('overrun_times', models.IntegerField(null=True)),
                 ('channel_field', models.CharField(max_length=32, null=True)),
                 ('is_monitor', models.BooleanField(default=False)),
-                ('channel', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='systemConfig.sensorconfig')),
+                ('unit', models.CharField(max_length=32, null=True)),
+                ('remark', models.CharField(max_length=32, null=True)),
+                ('channel',
+                 models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='systemConfig.sensorconfig')),
             ],
         ),
         migrations.RunPython(create_initial_data),
