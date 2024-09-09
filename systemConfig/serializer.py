@@ -66,7 +66,7 @@ class ConfigUpdateSerializer(serializers.Serializer):
 
 #删除配置请求
 class ConfigDeleteSerializer(serializers.Serializer):
-    id = serializers.CharField(help_text="ID")
+    id = serializers.CharField(help_text="config_id")
 
 
 #应用配置请求
@@ -218,6 +218,7 @@ class channelConfigSerializer(serializers.Serializer):
     channel_name = serializers.CharField(label="通道名称", max_length=32)
     overrun_times = serializers.IntegerField(label="超限次数")
     channel_field = serializers.CharField(label="对应字段", max_length=32)
+    remark = serializers.CharField(label="备注", max_length=32)
 
 
 #通道配置显示

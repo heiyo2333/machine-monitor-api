@@ -61,7 +61,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 
-    # "systemConfig.middleware.ConfigMiddleware",
+    "systemConfig.middleware.ConfigMiddleware",
 ]
 
 ROOT_URLCONF = 'MachineMonitorApi.urls'

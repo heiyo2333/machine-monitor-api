@@ -28,8 +28,8 @@ class componentConfig(models.Model):
 # 部件配置附表
 class algorithmChannel(models.Model):
     sensor_id = models.IntegerField(null=True)  # 传感器id
-    sensor_name = models.CharField(max_length=32, null=True)  # 传感器名称
+    # sensor_name = models.CharField(max_length=32, null=True)  # 传感器名称
     channel_id = models.IntegerField(null=True)  # 通道id
-    channel_name = models.CharField(max_length=32, null=True)  # 通道名称
+    # channel_name = models.CharField(max_length=32, null=True)  # 通道名称
     algorithm_channel = models.ForeignKey(componentConfig, db_constraint=True, on_delete=models.CASCADE)  # 外键
 

@@ -40,6 +40,7 @@ class channelConfig(models.Model):
     channel_field = models.CharField(max_length=32, null=True)  # 对应字段
     is_monitor = models.BooleanField(default=False)  # 是否监控
     channel = models.ForeignKey(sensorConfig, db_constraint=True, on_delete=models.CASCADE)  # 外键
+    remark = models.CharField(max_length=32, null=True)# 备注
 
 
 # class context(models.Model):

@@ -37,11 +37,11 @@ def create_initial_data(apps, schema_editor):
                           channel_name='加速度-Z',
                           algorithm_channel_id=1)
 
-    Model3.objects.create(id=4, sensor_id=2, sensor_name='主轴-三相交流电流传感器', channel_id=4, channel_name='电流-U',
+    Model3.objects.create(id=4, sensor_id=2, channel_id=4, channel_name='电流-U',
                           algorithm_channel_id=2)
-    Model3.objects.create(id=5, sensor_id=2, sensor_name='主轴-三相交流电流传感器', channel_id=5, channel_name='电流-V',
+    Model3.objects.create(id=5, sensor_id=2, channel_id=5, channel_name='电流-V',
                           algorithm_channel_id=2)
-    Model3.objects.create(id=6, sensor_id=2, sensor_name='主轴-三相交流电流传感器', channel_id=6, channel_name='电流-W',
+    Model3.objects.create(id=6, sensor_id=2, channel_id=6, channel_name='电流-W',
                           algorithm_channel_id=2)
 
 
@@ -84,9 +84,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('sensor_id', models.IntegerField(null=True)),
-                ('sensor_name', models.CharField(max_length=32, null=True)),
                 ('channel_id', models.IntegerField(null=True)),
-                ('channel_name', models.CharField(max_length=32, null=True)),
                 ('algorithm_channel',
                  models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='methodConfig.componentconfig')),
             ],

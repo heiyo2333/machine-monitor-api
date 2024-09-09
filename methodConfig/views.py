@@ -2,7 +2,7 @@ import json
 import os
 import socket
 from datetime import datetime, timedelta
-
+import re
 import requests
 from django.core.files.base import ContentFile
 from django.db.models import Max
@@ -20,7 +20,7 @@ from pypinyin import lazy_pinyin, Style
 from . import models, serializer
 import systemConfig
 from .models import algorithmConfig
-
+from .serializer import addComponentSerializer
 
 def get_local_ip():
     hostname = socket.gethostname()
@@ -401,9 +401,10 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
             algorithm_channel = []
             c = models.algorithmChannel.objects.filter(algorithm_channel_id=x.id)
             for i in c:
+                channel_id = i.channel_id
                 algorithm_channel.append({
                     'id': i.id,
-                    'channel_name': i.channel_name,
+                    'channel_name': systemConfig.models.channelConfig.objects.get(id=channel_id).channel_name,
                 })
             result_list.append(
                 {
@@ -442,10 +443,11 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         algorithm_id = self.request.data.get('algorithm_id')
         remark = self.request.data.get('remark')
         algorithm_channel_data = self.request.data.get('algorithm_channel_data')
+        print(algorithm_channel_data)
+        algorithm_channel_data_json = json.loads(algorithm_channel_data)
 
         system = systemConfig.models.systemConfig.objects.get(id=config_id)
         algorithm = models.algorithmConfig.objects.get(id=algorithm_id)
-
         component_code = component_code_rule(component_name)
         new_component = models.componentConfig.objects.create(config_id=config_id,
                                                               machine_code=system.machine_code,
@@ -455,16 +457,11 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
                                                               algorithm_id=algorithm_id,
                                                               algorithm_name=algorithm.algorithm_name,
                                                               remark=remark)
-        algorithm_channel_data = json.loads(algorithm_channel_data)
-        for i in range(len(algorithm_channel_data)):
-            sensor_id = algorithm_channel_data[i]["sensor_id"]
-            channel_id = algorithm_channel_data[i]["channel_id"]
-            sensor = systemConfig.models.sensorConfig.objects.get(id=sensor_id)
-            channel = systemConfig.models.channelConfig.objects.get(id=channel_id)
-            models.algorithmChannel.objects.create(sensor_id=sensor.id,
-                                                   sensor_name=sensor.sensor_name,
-                                                   channel_id=channel.id,
-                                                   channel_name=channel.channel_name,
+
+        # 生成新的算法使用的传感器通道
+        for i in algorithm_channel_data_json:
+            models.algorithmChannel.objects.create(sensor_id=i["sensor"],
+                                                   channel_id=i["channel"],
                                                    algorithm_channel_id=new_component.id, )
         response = {
             'status': 200,
@@ -481,19 +478,23 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['post'])
     def ComponentUpdate(self, request):
-        id = self.request.data.get('id')
+        component_id = self.request.data.get('id')
         config_id = self.request.data.get('config_id')
         component_name = self.request.data.get('component_name')
         algorithm_id = self.request.data.get('algorithm_id')
         remark = self.request.data.get('remark')
         algorithm_channel_data = self.request.data.get('algorithm_channel_data')
 
+        print(algorithm_channel_data)
+        algorithm_channel_data_json = json.loads(algorithm_channel_data)
+        # algorithm_channel_data_json = json.loads(f'[{algorithm_channel_data}]')
         system = systemConfig.models.systemConfig.objects.get(id=config_id)
         algorithm = models.algorithmConfig.objects.get(id=algorithm_id)
 
-        models.algorithmChannel.objects.filter(algorithm_channel_id=id).delete()
+        # 删除原来的算法使用的传感器通道
+        models.algorithmChannel.objects.filter(algorithm_channel_id=component_id).delete()
 
-        component = models.componentConfig.objects.filter(id=id)
+        component = models.componentConfig.objects.filter(id=component_id)
 
         if component_name == component.first().component_name:
             component_code = component.first().component_code
@@ -508,17 +509,11 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
                          algorithm_id=algorithm_id,
                          algorithm_name=algorithm.algorithm_name,
                          remark=remark)
-        algorithm_channel_data = json.loads(algorithm_channel_data)
-        for i in range(len(algorithm_channel_data)):
-            sensor_id = algorithm_channel_data[i]["sensor_id"]
-            channel_id = algorithm_channel_data[i]["channel_id"]
-            sensor = systemConfig.models.sensorConfig.objects.get(id=sensor_id)
-            channel = systemConfig.models.channelConfig.objects.get(id=channel_id)
-            models.algorithmChannel.objects.create(sensor_id=sensor.id,
-                                                   sensor_name=sensor.sensor_name,
-                                                   channel_id=channel.id,
-                                                   channel_name=channel.channel_name,
-                                                   algorithm_channel_id=id, )
+        # 生成新的算法使用的传感器通道
+        for i in algorithm_channel_data_json:
+            models.algorithmChannel.objects.create(sensor_id=i["sensor"],
+                                                   channel_id=i["channel"],
+                                                   algorithm_channel_id=component_id, )
         response = {
             'status': 200,
             'message': '编辑部件配置成功'
