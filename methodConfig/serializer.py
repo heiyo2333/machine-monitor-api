@@ -45,12 +45,14 @@ class componentDeleteSerializer(serializers.Serializer):
 # 部件配置-显示
 class componentListSerializer(serializers.Serializer):
     id = serializers.IntegerField(help_text="部件id")
+    config_id = serializers.CharField(help_text="当前配置id", max_length=32)  # 机床编号
     machine_code = serializers.CharField(help_text="机床编号", max_length=32)  # 机床编号
     machine_name = serializers.CharField(help_text="机床名称", max_length=32)  # 机床名称
     component_code = serializers.CharField(help_text="部件编号", max_length=32)  # 部件编号
     component_name = serializers.CharField(help_text="部件名称", max_length=32)  # 部件名称
+    algorithm_id = serializers.CharField(help_text="算法id", max_length=32)  # 部件名称
     algorithm_name = serializers.CharField(help_text="算法名称", max_length=32)  # 算法名称
-    algorithm_input_channel = serializers.CharField(help_text="算法输入通道", max_length=32)  # 算法输入通道
+    algorithm_channel_data = serializers.CharField(help_text="算法输入通道", max_length=32)  # 算法输入通道
     remark = serializers.CharField(help_text="备注", max_length=32, required=False)  # 备注
 
 
@@ -67,10 +69,12 @@ class editComponentSerializer(serializers.Serializer):
 
 # 部件配置-新增
 class addComponentSerializer(serializers.Serializer):
+    config_id = serializers.CharField(help_text="机床id", max_length=32)  # 机床id
     component_name = serializers.CharField(help_text="部件名称", max_length=32)  # 部件名称
     algorithm_id = serializers.IntegerField(help_text="算法id")  # 算法id
     remark = serializers.CharField(help_text="备注", max_length=32, required=False)  # 备注
     algorithm_channel_data = serializers.CharField(help_text="算法输入通道数据")
+
 
 # 上传文件
 class uploadFileSerializer(serializers.Serializer):
@@ -96,3 +100,7 @@ class uploadFileSerializer(serializers.Serializer):
         file_url = os.path.normpath(os.path.join(settings.MEDIA_URL, 'UploadImage', file.name)).replace('\\', '/')
 
         return file_url
+
+# 信号展示
+# class signalSerializer(serializers.Serializer):
+#     config_id = serializers.CharField(help_text="机床id", max_length=32)  # 机床id

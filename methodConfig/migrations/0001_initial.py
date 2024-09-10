@@ -63,6 +63,7 @@ class Migration(migrations.Migration):
                 ('component_name', models.CharField(max_length=32, null=True)),
                 ('algorithm_id', models.IntegerField(null=True)),
                 ('algorithm_name', models.CharField(max_length=32, null=True)),
+                ('algorithm_channel_data', models.CharField(max_length=32, null=True)),
                 ('remark', models.CharField(max_length=32, null=True)),
                 ('component_status', models.CharField(max_length=32, null=True)),
                 ('monitor_status', models.BooleanField(default=False)),
