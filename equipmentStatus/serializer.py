@@ -13,6 +13,7 @@ class equipmentStatusSerializer(serializers.Serializer):
 # 警告及故障代码查询
 class faultCodeSerializer(serializers.Serializer):
     id = serializers.IntegerField(help_text="id")
+    config_id = serializers.IntegerField(help_text="机床配置id")
     machine_code = serializers.CharField(help_text="机床编号", max_length=32)  # 机床编号
     machine_name = serializers.CharField(help_text="机床名称", max_length=32)  # 机床名称
     warning_time = serializers.CharField(help_text="警告时间", max_length=32)  # 警告时间
@@ -27,6 +28,14 @@ class addFaultCodeSerializer(serializers.Serializer):
     warning_time = serializers.CharField(help_text="警告时间", max_length=32)  # 警告时间
     fault_type = serializers.CharField(help_text="报警类型", max_length=32)  # 报警类型
     fault_code = serializers.CharField(help_text="报警代码", max_length=32)  # 报警代码
+
+
+# # 警告及故障代码查找
+# class findFaultCodeSerializer(serializers.Serializer):
+#     component_id = serializers.IntegerField(help_text="部件id")
+#     warning_time = serializers.CharField(help_text="警告时间", max_length=32)  # 警告时间
+#     fault_type = serializers.CharField(help_text="报警类型", max_length=32)  # 报警类型
+#     fault_code = serializers.CharField(help_text="报警代码", max_length=32)  # 报警代码
 
 
 # 机床加工热力图

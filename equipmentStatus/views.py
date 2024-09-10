@@ -214,7 +214,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
     def sensorsData(self, request):
         config_id = self.request.query_params.get('config_id')
         sensors = systemConfig.models.sensorConfig.objects.filter(config_id=config_id)
-        result_list =[]
+        result_list = []
         for sensor in sensors:
             result_list.append({
                 'id': sensor.id,
@@ -241,7 +241,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
         responses={200: openapi.Response('successful')},
         tags=["equipment"],
     )
-    @ action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'])
     def sensorChannel(self, request):
         id = self.request.query_params.get('id')
         channels = methodConfig.models.channelConfig.objects.filter(channel_id=id)
@@ -265,7 +265,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
 
     # 查询警告及故障代码
     @swagger_auto_schema(
-        operation_summary='警告及故障代码',
+        operation_summary='警告及故障代码查询',
         # 获取参数
         manual_parameters=[
             openapi.Parameter('config_id', openapi.IN_QUERY, description='配置id', type=openapi.TYPE_INTEGER,
@@ -283,13 +283,15 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
         for x in machineConfig:
             result_list.append(
                 {
-                    'id': x.id,
+                    "id": x.id,
+                    'config_id': x.config_id,
                     'machine_code': x.machine_code,
                     'machine_name': x.machine_name,
                     'warning_time': x.warning_time,
+                    'component_id': x.component_id,
                     'component_name': x.component_name,
                     'fault_type': x.fault_type,
-                    'fault_code': x.fault_code,
+                    'fault_code': x.fault_code
                 }
             )
         response_list = {
@@ -445,7 +447,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['post'])
     def addFaultCode(self, request):
         component_id = self.request.data.get('component_id')
-        component = methodConfig.models.componentConfig.objects.filter(id=component_id)
+        component = methodConfig.models.componentConfig.objects.get(id=component_id)
         warning_time = self.request.data.get('warning_time')  # 警告时间
         fault_type = self.request.data.get('fault_type')  # 报警类型
         fault_code = self.request.data.get('fault_code')  # 报警代码
@@ -454,6 +456,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
                                                         machine_code=component.machine_code,
                                                         machine_name=component.machine_name,
                                                         warning_time=warning_time,
+                                                        component_id=component_id,
                                                         component_name=component.component_name,
                                                         fault_type=fault_type,
                                                         fault_code=fault_code, )
@@ -488,5 +491,38 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
             'id': new_thermalDiagram.id,
             'status': 200,
             'message': '机床加工时间填写成功'
+        }
+        return JsonResponse(response)
+
+    # 机床参数查询
+    @swagger_auto_schema(
+        operation_summary='机床参数查询',
+        # 获取参数
+        manual_parameters=[
+            openapi.Parameter('config_id', openapi.IN_QUERY, description='配置id', type=openapi.TYPE_INTEGER,
+                              required=True), ],
+        responses={200: '机床参数查询成功'},
+        tags=["equipment"],
+    )
+    @action(detail=False, methods=['get'])
+    def findParameter(self, request):
+        config_id = self.request.query_params.get('config_id')
+        machine_parameter = models.machineParameter.objects.filter(config_id=config_id).last()
+
+        Parameter = {
+            'machine_t': machine_parameter.machine_t,
+            'machine_p': machine_parameter.machine_p,
+            'machine_a': machine_parameter.machine_a,
+            'machine_t_unit': machine_parameter.machine_t_unit,
+            'machine_p_unit': machine_parameter.machine_p_unit,
+            'machine_a_unit': machine_parameter.machine_a_unit,
+            'machine_t_max': machine_parameter.machine_t_max,
+            'machine_p_max': machine_parameter.machine_p_max,
+            'machine_a_max': machine_parameter.machine_a_max,
+        }
+        response = {
+            'data': Parameter,
+            'status': 200,
+            'message': '机床参数查询成功'
         }
         return JsonResponse(response)
