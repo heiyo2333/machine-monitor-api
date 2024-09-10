@@ -387,39 +387,31 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['get'])
     def componentDisplay(self, request):
         config_id = self.request.query_params.get('id')
-        pageSize = int(self.request.query_params.get('pageSize'))
-        current = int(self.request.query_params.get('current'))
-        first = (current - 1) * pageSize
-        last = current * pageSize
-        if config_id is None:
-            component = models.componentConfig.objects.all()[first:last]
+        pageSize = self.request.query_params.get('pageSize')
+        current = self.request.query_params.get('current')
+        if pageSize is not None and current is not None:
+            first = (int(current) - 1) * int(pageSize)
+            last = int(current) * int(pageSize)
+            if config_id is None:
+                component = models.componentConfig.objects.all()[first:last]
+            else:
+                component = models.componentConfig.objects.filter(config_id=config_id)[first:last]
         else:
-            component = models.componentConfig.objects.filter(config_id=config_id)[first:last]
+            component = models.componentConfig.objects.filter(config_id=config_id)
         total = component.count()
         result_list = []
         for x in component:
-            algorithm_channel = []
-            c = models.algorithmChannel.objects.filter(algorithm_channel_id=x.id)
-            for i in c:
-                channel_id = i.channel_id
-                try:
-                    channel = systemConfig.models.channelConfig.objects.get(id=channel_id)
-                    channel_name = channel.channel_name
-                except systemConfig.models.channelConfig.DoesNotExist:
-                    channel_name = ''
-                algorithm_channel.append({
-                    'id': i.id,
-                    'channel_name': channel_name,
-                })
             result_list.append(
                 {
                     'id': x.id,
+                    'config_id': x.config_id,
                     'machine_code': x.machine_code,
                     'machine_name': x.machine_name,
                     'component_name': x.component_name,
                     'component_code': x.component_code,
+                    'algorithm_id': x.algorithm_id,
                     'algorithm_name': x.algorithm_name,
-                    'algorithm_channel': algorithm_channel,
+                    'algorithm_channel_data': x.algorithm_channel_data,
                     'remark': x.remark,
                 }
             )
@@ -461,6 +453,7 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
                                                               component_code=component_code,
                                                               algorithm_id=algorithm_id,
                                                               algorithm_name=algorithm.algorithm_name,
+                                                              algorithm_channel_data=algorithm_channel_data,
                                                               remark=remark)
 
         # 生成新的算法使用的传感器通道
@@ -513,6 +506,7 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
                          component_code=component_code,
                          algorithm_id=algorithm_id,
                          algorithm_name=algorithm.algorithm_name,
+                         algorithm_channel_data=algorithm_channel_data,
                          remark=remark)
         # 生成新的算法使用的传感器通道
         for i in algorithm_channel_data_json:
@@ -584,7 +578,7 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['get'])
     def signalSelect(self, request):
         system_config = systemConfig.models.systemConfig.objects.all()
-        request_list = []
+        request = []
 
         for i in system_config:
             request_list = {
@@ -593,6 +587,7 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
                 'children': [],
             }
             components = models.componentConfig.objects.filter(config_id=i.id)
+            # print(components)
             for j in components:
                 child_component = {
                     'value': j.id,
@@ -608,21 +603,170 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
                         'children': []
                     }
                     child_component['children'].append(child_sensor)
-                    channels = models.algorithmChannel.objects.filter(algorithm_channel_id=k.id)
+                    channels = systemConfig.models.channelConfig.objects.filter(channel_id=k.id)
                     for h in channels:
                         child_channel = {
                             'value': h.id,
                             'label': h.channel_name,
                         }
                         child_sensor['children'].append(child_channel)
+            request.append(request_list)
 
-        response_list = {
-            'list': request_list,
+        response = {
+            'list': request,
             'total': system_config.count(),
         }
         response = {
-            'data': response_list,
+            'data': response,
             'message': 'Successful',
             'status': 200,
+        }
+        return JsonResponse(response)
+
+    # 折线图-信号列表
+    @swagger_auto_schema(
+        operation_summary='折线图-信号列表',
+        # 获取参数
+        manual_parameters=[
+            openapi.Parameter('config_id', openapi.IN_QUERY, description='配置id',
+                              type=openapi.TYPE_INTEGER,
+                              required=True),
+            openapi.Parameter('component_id', openapi.IN_QUERY, description='部件id',
+                              type=openapi.TYPE_INTEGER,
+                              required=True),
+            openapi.Parameter('sensor_id', openapi.IN_QUERY, description='传感器id',
+                              type=openapi.TYPE_INTEGER,
+                              required=True),
+            openapi.Parameter('channel_id', openapi.IN_QUERY, description='通道id',
+                              type=openapi.TYPE_INTEGER,
+                              required=True),
+        ],
+        responses={200: '信号列表获取成功'},
+        tags=['signal']
+    )
+    @action(detail=False, methods=['get'])
+    def signalDisplay(self, request):
+        config_id = self.request.query_params.get('config_id')
+        print(config_id)
+        component_id = self.request.query_params.get('component_id')
+        sensor_id = self.request.query_params.get('sensor_id')
+        channel_id = self.request.query_params.get('channel_id')
+
+        system = systemConfig.models.systemConfig.objects.get(id=config_id)
+        sensor = systemConfig.models.sensorConfig.objects.get(id=sensor_id)
+        channel = systemConfig.models.channelConfig.objects.get(id=channel_id)
+        component = models.componentConfig.objects.get(id=component_id)
+
+        if sensor.sensor_status and channel.is_monitor:
+            database_name = system.database_name
+            client = InfluxDBClient(host='localhost', port=8086, username='admin', password='admin',
+                                    database=database_name)
+            display_number = 2000
+            measurement = sensor.measurement
+            unit = channel.unit
+            query = f'SELECT * FROM "{measurement}" ORDER BY time DESC LIMIT {display_number}'
+            result = client.query(query)
+            client.close()
+            result_1 = list(result.get_points())
+            result_2 = reversed(result_1)
+
+            xData = []
+            yData = []
+            # 处理查询结果
+            for point in result_2:
+                field_time = str(
+                    (datetime.strptime(point.get('time'), '%Y-%m-%dT%H:%M:%S.%fZ') + timedelta(hours=8)).strftime(
+                        '%Y-%m-%d %H:%M:%S.%f')[:-5])
+                field_value = point.get('fields1_power')
+                if (field_time is not None) or (field_value is not None):
+                    xData.append(field_time)
+                    yData.append(field_value)
+            data = {
+                'xAxisName': '时间',
+                'xData': xData[0: display_number - 1],  # 横坐标
+                'yAxisName': unit,
+                'yData': yData[0: display_number - 1],  # 纵坐标
+            }
+            status = 200
+            message = '信号列表获取成功'
+        else:
+            data = {}
+            status = 500
+            message = '该传感器未开启或该通道未监控，无法获取信号！'
+        response = {
+            'data': data,
+            'status': status,
+            'message': message,
+        }
+        return JsonResponse(response)
+
+    # 折线图-最新信号
+    @swagger_auto_schema(
+        operation_summary='折线图-最新信号',
+        # 获取参数
+        manual_parameters=[
+            openapi.Parameter('config_id', openapi.IN_QUERY, description='配置id',
+                              type=openapi.TYPE_INTEGER,
+                              required=True),
+            openapi.Parameter('component_id', openapi.IN_QUERY, description='部件id',
+                              type=openapi.TYPE_INTEGER,
+                              required=True),
+            openapi.Parameter('sensor_id', openapi.IN_QUERY, description='传感器id',
+                              type=openapi.TYPE_INTEGER,
+                              required=True),
+            openapi.Parameter('channel_id', openapi.IN_QUERY, description='通道id',
+                              type=openapi.TYPE_INTEGER,
+                              required=True),
+        ],
+        responses={200: '最新信号获取成功'},
+        tags=['signal']
+    )
+    @action(detail=False, methods=['get'])
+    def newestSignal(self, request):
+        config_id = self.request.query_params.get('config_id')
+        print(config_id)
+        component_id = self.request.query_params.get('component_id')
+        sensor_id = self.request.query_params.get('sensor_id')
+        channel_id = self.request.query_params.get('channel_id')
+
+        system = systemConfig.models.systemConfig.objects.get(id=config_id)
+        sensor = systemConfig.models.sensorConfig.objects.get(id=sensor_id)
+        channel = systemConfig.models.channelConfig.objects.get(id=channel_id)
+        component = models.componentConfig.objects.get(id=component_id)
+
+        database_name = system.database_name
+        measurement = sensor.measurement
+        unit = channel.unit
+        if sensor.sensor_status and channel.is_monitor:
+            client = InfluxDBClient(host='localhost', port=8086, username='admin', password='admin',
+                                    database=database_name)
+            query = f'SELECT * FROM "{measurement}" ORDER BY time DESC LIMIT 1'
+            result = client.query(query)
+            client.close()
+            points = list(result.get_points())
+            point = points[0]
+            # 解析时间字符串
+            field_time = str(
+                (datetime.strptime(point.get('time'), '%Y-%m-%dT%H:%M:%S.%fZ') + timedelta(hours=8)).strftime(
+                    '%Y-%m-%d %H:%M:%S.%f')[:-5])
+            field_value = point.get('fields1_power')
+
+            data = {
+                'xAxisName': '时间',
+                'xData': field_time,  # 横坐标
+                'yAxisName': unit,
+                'yData': field_value,  # 纵坐标
+            }
+        else:
+            data = {
+                'xAxisName': '时间',
+                'xData': "",  # 横坐标
+                'yAxisName': unit,
+                'yData': "",  # 纵坐标
+            }
+        response = {
+            'data': data,
+            'status': 200,
+            'message': '最新信号获取成功！',
         }
         return JsonResponse(response)

@@ -32,8 +32,6 @@ class addFaultCodeSerializer(serializers.Serializer):
 # 机床加工热力图
 class thermalDiagramSerializer(serializers.Serializer):
     config_id = serializers.IntegerField(help_text="配置id")
-    horizontal_axis = serializers.CharField(help_text="横轴数据", max_length=32)  # 横轴数据
-    vertical_axis = serializers.CharField(help_text="竖轴数据", max_length=32)  # 竖轴数据
     data = serializers.CharField(help_text="坐标数据", max_length=32)  # 坐标数据
 
 

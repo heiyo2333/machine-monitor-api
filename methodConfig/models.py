@@ -19,6 +19,7 @@ class componentConfig(models.Model):
     component_name = models.CharField(max_length=32, null=True)  # 部件名称
     algorithm_id = models.IntegerField(null=True)  # 算法id
     algorithm_name = models.CharField(max_length=32, null=True)  # 算法名称
+    algorithm_channel_data = models.CharField(max_length=32, null=True)  # 算法通道
     remark = models.CharField(max_length=32, null=True)  # 备注
 
     component_status = models.CharField(max_length=32, null=False)  # 部件运行状态
