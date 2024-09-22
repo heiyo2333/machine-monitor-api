@@ -11,12 +11,12 @@ def create_initial_data(apps, schema_editor):
     # 初始化系统配置1
     Model1.objects.create(id=1, machine_code='vmc850', machine_name='大恒机床VMC850', machine_type='五轴加工中心',
                           machine_description='大恒机床-五轴-VMC850', manager='张三', machine_ip='192.168.110.23',
-                          machine_port=7798, tool_number=30, database_name='ComponentMonitor',
+                          machine_port=7798, tool_number=30, database_name='testdata',
                           alarm_data_delay_positive=30, alarm_data_delay_negative=10,
                           machine_image='Machine/MachineImage/test.png', is_apply=1)
     # 初始化加速度传感器
     Model2.objects.create(id=1, sensor_code="Principal-DH5501R-Px", sensor_name='主轴-三相加速度传感器', frequency=100,
-                          channel_number=3, sensor_status=1, measurement='current1', sensor_image='Sensor/SensorImage/test.png',
+                          channel_number=3, sensor_status=1, measurement='signal', sensor_image='Sensor/SensorImage/test.png',
                           operational_status=True, config_id=1)
     Model3.objects.create(id=1, sensor_name="主轴-三相加速度传感器", channel_name='加速度-X', overrun_times=3,
                           channel_field='AcceleratedSpeed_X', unit='A', is_monitor=1, channel_id=1)
@@ -26,7 +26,7 @@ def create_initial_data(apps, schema_editor):
                           channel_field='AcceleratedSpeed_Z', unit='A', is_monitor=1, channel_id=1)
     # 初始化电流传感器
     Model2.objects.create(id=2, sensor_code="Principal-KXT237I-VD", sensor_name='主轴-三相交流电流传感器',
-                          frequency=100, channel_number=3, sensor_status=1, measurement='vibrate1', sensor_image='Sensor/SensorImage/test.png',
+                          frequency=100, channel_number=3, sensor_status=1, measurement='signal', sensor_image='Sensor/SensorImage/test.png',
                           operational_status=True, config_id=1)
     Model3.objects.create(id=4, sensor_name="主轴-三相交流电流传感器", channel_name='电流-U', overrun_times=3,
                           channel_field='Current_X', unit='A', is_monitor=1, channel_id=2)

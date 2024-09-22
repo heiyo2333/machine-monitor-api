@@ -65,15 +65,24 @@ class machineInformationSerializer(serializers.Serializer):
     machine_image = serializers.CharField(help_text="机床图片", max_length=255)  # 机床图片
 
 
-# 设备运行状况-数据
-class equipmentDataSerializer(serializers.Serializer):
-    config_id = serializers.IntegerField(help_text="配置id")
-    temp = serializers.FloatField(help_text="温度/℃")
-    temp_min = serializers.FloatField(help_text="最小温度/℃")
-    temp_max = serializers.FloatField(help_text="最大温度/℃")
-    power = serializers.FloatField(help_text="功率/W")
-    power_min = serializers.FloatField(help_text="最小功率/W")
-    power_max = serializers.FloatField(help_text="最大功率/W")
-    acceleration = serializers.FloatField(help_text="加速度/g")
-    acceleration_min = serializers.FloatField(help_text="最小加速度/g")
-    acceleration_max = serializers.FloatField(help_text="最大加速度/g")
+class sensorDataSerializer(serializers.Serializer):
+    id = serializers.IntegerField(help_text="id")
+    sensor_id = serializers.IntegerField(help_text="传感器id")
+    sensor_name = serializers.CharField(help_text="传感器名称", max_length=32)
+    channel_id = serializers.IntegerField(help_text="通道id")
+    channel_name = serializers.CharField(help_text="通道名称", max_length=32)
+    status = serializers.BooleanField(help_text="传感器状态")
+
+
+# # 设备运行状况-数据
+# class equipmentDataSerializer(serializers.Serializer):
+#     config_id = serializers.IntegerField(help_text="配置id")
+#     temp = serializers.FloatField(help_text="温度/℃")
+#     temp_min = serializers.FloatField(help_text="最小温度/℃")
+#     temp_max = serializers.FloatField(help_text="最大温度/℃")
+#     power = serializers.FloatField(help_text="功率/W")
+#     power_min = serializers.FloatField(help_text="最小功率/W")
+#     power_max = serializers.FloatField(help_text="最大功率/W")
+#     acceleration = serializers.FloatField(help_text="加速度/g")
+#     acceleration_min = serializers.FloatField(help_text="最小加速度/g")
+#     acceleration_max = serializers.FloatField(help_text="最大加速度/g")

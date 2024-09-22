@@ -676,27 +676,36 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['get'])
     def channelDisplay(self, request):
         sensor_id = self.request.query_params.get("id")
-
-        configuration = models.sensorConfig.objects.get(id=sensor_id)
-        # 通过主表去反查附表
-        channel_info = configuration.channelconfig_set.all()
-        list = []
-        for channel in channel_info:
-            print(channel.channel_name)
-            list.append({
-                'id': channel.id,
-                'sensor_code': channel.sensor_code,
-                'sensor_name': channel.sensor_name,
-                'channel_name': channel.channel_name,
-                'overrun_times': channel.overrun_times,
-                'channel_field': channel.channel_field,
-                'is_monitor': channel.is_monitor,
-                'unit': channel.unit,
-                'remark': channel.remark,
-            })
-        response = {
-            'list': list,
-            'status': 200,
-            'message': '通道配置信息',
-        }
-        return JsonResponse(response)
+        if sensor_id:
+            print('sensor_id',sensor_id)
+            configuration = models.sensorConfig.objects.get(id=sensor_id)
+            # 通过主表去反查附表
+            channel_info = configuration.channelconfig_set.all()
+            list = []
+            for channel in channel_info:
+                print(channel.channel_name)
+                list.append({
+                    'id': channel.id,
+                    'sensor_code': channel.sensor_code,
+                    'sensor_name': channel.sensor_name,
+                    'channel_name': channel.channel_name,
+                    'overrun_times': channel.overrun_times,
+                    'channel_field': channel.channel_field,
+                    'is_monitor': channel.is_monitor,
+                    'unit': channel.unit,
+                    'remark': channel.remark,
+                })
+            response = {
+                'list': list,
+                'status': 200,
+                'message': '通道配置信息',
+            }
+            return JsonResponse(response)
+        else:
+            list = []
+            response = {
+                'list': list,
+                'status': 200,
+                'message': '通道配置信息',
+            }
+            return JsonResponse(response)

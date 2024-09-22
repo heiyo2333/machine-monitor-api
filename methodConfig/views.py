@@ -28,11 +28,21 @@ def get_local_ip():
     return local_ip
 
 
-def get_initials(chinese_str):
-    # 将中文转换为拼音列表
-    pinyin_list = lazy_pinyin(chinese_str, style=Style.INITIALS)
-    # 提取每个拼音的首字母并转换为大写
-    initials = ''.join([item[0].upper() for item in pinyin_list])
+# def get_initials(chinese_str):
+#     # 将中文转换为拼音列表
+#     pinyin_list = lazy_pinyin(chinese_str, style=Style.INITIALS)
+#     # 提取每个拼音的首字母并转换为大写
+#     initials = ''.join([item[0].upper() for item in pinyin_list])
+#     return initials
+
+
+def get_initials(name):
+    # 将算法名称转换为拼音
+    pinyin_list = lazy_pinyin(name)
+
+    # 过滤掉空字符串，并获取每个拼音的首字母
+    initials = ''.join([item[0].upper() for item in pinyin_list if item])
+
     return initials
 
 
@@ -234,8 +244,18 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
                                                                       algorithm_channel_number=algorithm_channel_number,
                                                                       remark=remark)
         n = models.algorithmConfig.objects.get(id=algorithm_id)
-        if n.algorithm_file:
-            os.remove(n.algorithm_file.path)
+        file_path = n.algorithm_file.path
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        else:
+            response = {
+                'status': 500,
+                'message': '该算法文件不存在'
+            }
+
+            return JsonResponse(response)
+        # if n.algorithm_file:
+        #     os.remove(n.algorithm_file.path)
 
         # 从URL下载文件内容
         response = requests.get(algorithm_file_path)
@@ -343,7 +363,7 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
     def channelSelect(self, request):
         config_id = self.request.query_params.get("id")
         sensors = systemConfig.models.sensorConfig.objects.filter(config_id=config_id, sensor_status=True)
-        request_list = []
+        requests = []
         for i in sensors:
             request_list = {
                 'value': i.id,
@@ -357,9 +377,10 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
                         'label': j.channel_name,
                     }
                 request_list['children'].append(child_channel)
+            requests.append(request_list)
 
         response_list = {
-            'list': request_list,
+            'list': requests,
             'total': sensors.count(),
         }
         response = {
@@ -436,11 +457,14 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['post'])
     def addComponent(self, request):
         config_id = self.request.data.get('config_id')
+        print(config_id)
         component_name = self.request.data.get('component_name')
         algorithm_id = self.request.data.get('algorithm_id')
+        print(algorithm_id)
         remark = self.request.data.get('remark')
         algorithm_channel_data = self.request.data.get('algorithm_channel_data')
         print(algorithm_channel_data)
+        print('1111')
         algorithm_channel_data_json = json.loads(algorithm_channel_data)
 
         system = systemConfig.models.systemConfig.objects.get(id=config_id)
@@ -457,6 +481,7 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
                                                               remark=remark)
 
         # 生成新的算法使用的传感器通道
+        print(algorithm_channel_data_json)
         for i in algorithm_channel_data_json:
             models.algorithmChannel.objects.create(sensor_id=i["sensor"],
                                                    channel_id=i["channel"],
@@ -661,7 +686,7 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
             database_name = system.database_name
             client = InfluxDBClient(host='localhost', port=8086, username='admin', password='admin',
                                     database=database_name)
-            display_number = 2000
+            display_number = 1000
             measurement = sensor.measurement
             unit = channel.unit
             query = f'SELECT * FROM "{measurement}" ORDER BY time DESC LIMIT {display_number}'
