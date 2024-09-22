@@ -37,4 +37,21 @@ class Migration(migrations.Migration):
                 ('machine_running_time', models.FloatField(max_length=32)),
             ],
         ),
+        migrations.CreateModel(
+            name='machineParameter',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('config_id', models.IntegerField(null=True)),
+                ('machine_name', models.CharField(max_length=32, null=True)),
+                ('machine_t', models.FloatField(max_length=32, null=True)),
+                ('machine_p', models.FloatField(max_length=32, null=True)),
+                ('machine_a', models.FloatField(max_length=32, null=True)),
+                ('machine_t_unit', models.CharField(max_length=32, null=True)),
+                ('machine_p_unit', models.CharField(max_length=32, null=True)),
+                ('machine_a_unit', models.CharField(max_length=32, null=True)),
+                ('machine_t_max', models.FloatField(max_length=32, null=True)),
+                ('machine_p_max', models.FloatField(max_length=32, null=True)),
+                ('machine_a_max', models.FloatField(max_length=32, null=True)),
+            ],
+        ),
     ]
