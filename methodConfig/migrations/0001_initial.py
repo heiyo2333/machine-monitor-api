@@ -27,22 +27,13 @@ def create_initial_data(apps, schema_editor):
                           component_code='vmc850-减速器', component_name='减速器',
                           algorithm_id=3, algorithm_name='减速器-SVM', component_status='正常', monitor_status='1')
 
-    Model3.objects.create(id=1, sensor_id=2, sensor_name='主轴-三相交流电流传感器', channel_id=4,
-                          channel_name='加速度-X',
-                          algorithm_channel_id=1)
-    Model3.objects.create(id=2, sensor_id=2, sensor_name='主轴-三相交流电流传感器', channel_id=5,
-                          channel_name='加速度-Y',
-                          algorithm_channel_id=1)
-    Model3.objects.create(id=3, sensor_id=2, sensor_name='主轴-三相交流电流传感器', channel_id=6,
-                          channel_name='加速度-Z',
-                          algorithm_channel_id=1)
+    Model3.objects.create(id=1, sensor_id=2, channel_id=4, algorithm_channel_id=1)
+    Model3.objects.create(id=2, sensor_id=2, channel_id=5, algorithm_channel_id=1)
+    Model3.objects.create(id=3, sensor_id=2, channel_id=6, algorithm_channel_id=1)
 
-    Model3.objects.create(id=4, sensor_id=2, channel_id=4, channel_name='电流-U',
-                          algorithm_channel_id=2)
-    Model3.objects.create(id=5, sensor_id=2, channel_id=5, channel_name='电流-V',
-                          algorithm_channel_id=2)
-    Model3.objects.create(id=6, sensor_id=2, channel_id=6, channel_name='电流-W',
-                          algorithm_channel_id=2)
+    Model3.objects.create(id=4, sensor_id=2, channel_id=4, algorithm_channel_id=2)
+    Model3.objects.create(id=5, sensor_id=2, channel_id=5, algorithm_channel_id=2)
+    Model3.objects.create(id=6, sensor_id=2, channel_id=6, algorithm_channel_id=2)
 
 
 class Migration(migrations.Migration):
