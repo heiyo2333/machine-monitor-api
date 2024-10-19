@@ -15,25 +15,27 @@ def create_initial_data(apps, schema_editor):
                           alarm_data_delay_positive=30, alarm_data_delay_negative=10,
                           machine_image='Machine/MachineImage/test.png', is_apply=1)
     # 初始化加速度传感器
-    Model2.objects.create(id=1, sensor_code="Principal-DH5501R-Px", sensor_name='主轴-三相加速度传感器', frequency=100,
-                          channel_number=3, sensor_status=1, measurement='signal', sensor_image='Sensor/SensorImage/test.png',
-                          operational_status=True, config_id=1)
-    Model3.objects.create(id=1, sensor_name="主轴-三相加速度传感器", channel_name='加速度-X', overrun_times=3,
-                          channel_field='AcceleratedSpeed_X', unit='A', is_monitor=1, channel_id=1)
-    Model3.objects.create(id=2, sensor_name="主轴-三相加速度传感器", channel_name='加速度-Y', overrun_times=3,
-                          channel_field='AcceleratedSpeed_Y', unit='A', is_monitor=1, channel_id=1)
-    Model3.objects.create(id=3, sensor_name="主轴-三相加速度传感器", channel_name='加速度-Z', overrun_times=3,
-                          channel_field='AcceleratedSpeed_Z', unit='A', is_monitor=1, channel_id=1)
-    # 初始化电流传感器
-    Model2.objects.create(id=2, sensor_code="Principal-KXT237I-VD", sensor_name='主轴-三相交流电流传感器',
-                          frequency=100, channel_number=3, sensor_status=1, measurement='signal', sensor_image='Sensor/SensorImage/test.png',
-                          operational_status=True, config_id=1)
-    Model3.objects.create(id=4, sensor_name="主轴-三相交流电流传感器", channel_name='电流-U', overrun_times=3,
-                          channel_field='Current_X', unit='A', is_monitor=1, channel_id=2)
-    Model3.objects.create(id=5, sensor_name="主轴-三相交流电流传感器", channel_name='电流-V', overrun_times=3,
-                          channel_field='Current_Y', unit='A', is_monitor=1, channel_id=2)
-    Model3.objects.create(id=6, sensor_name="主轴-三相交流电流传感器", channel_name='电流-W', overrun_times=3,
-                          channel_field='Current_Z', unit='A', is_monitor=1, channel_id=2)
+    Model2.objects.create(id=1, sensor_code="C2310020216", sensor_name='XM减速器-三相加速度', frequency=10,
+                          channel_number=9, command_code='01 03 A6 04 00 09 E6 85', sensor_status=1, measurement='signal',
+                          sensor_image='Sensor/SensorImage/test.png', operational_status=True, config_id=1)
+    Model3.objects.create(id=1, sensor_name="XM减速器-三相加速度", channel_name='X-轴速度有效值', overrun_times=3,
+                          channel_field='AcceleratedSpeed_X', unit='mm/s', is_monitor=1, channel_id=1)
+    Model3.objects.create(id=2, sensor_name="XM减速器-三相加速度", channel_name='Y-轴速度有效值', overrun_times=3,
+                          channel_field='AcceleratedSpeed_Y', unit='mm/s', is_monitor=1, channel_id=1)
+    Model3.objects.create(id=3, sensor_name="XM减速器-三相加速度", channel_name='Z-轴速度有效值', overrun_times=3,
+                          channel_field='AcceleratedSpeed_Z', unit='mm/s', is_monitor=1, channel_id=1)
+    Model3.objects.create(id=4, sensor_name="XM减速器-三相加速度", channel_name='X-轴加速度标准差值', overrun_times=3,
+                          channel_field='AcceleratedSpeed_X', unit='m/s²', is_monitor=1, channel_id=1)
+    Model3.objects.create(id=5, sensor_name="XM减速器-三相加速度", channel_name='Y-轴加速度标准差值', overrun_times=3,
+                          channel_field='AcceleratedSpeed_Y', unit='m/s²', is_monitor=1, channel_id=1)
+    Model3.objects.create(id=6, sensor_name="XM减速器-三相加速度", channel_name='Z-轴加速度标准差值', overrun_times=3,
+                          channel_field='AcceleratedSpeed_Z', unit='m/s²', is_monitor=1, channel_id=1)
+    Model3.objects.create(id=7, sensor_name="XM减速器-三相加速度", channel_name='X-轴加速度均方根值', overrun_times=3,
+                          channel_field='AcceleratedSpeed_X', unit='m/s²', is_monitor=1, channel_id=1)
+    Model3.objects.create(id=8, sensor_name="XM减速器-三相加速度", channel_name='Y-轴加速度均方根值', overrun_times=3,
+                          channel_field='AcceleratedSpeed_Y', unit='m/s²', is_monitor=1, channel_id=1)
+    Model3.objects.create(id=9, sensor_name="XM减速器-三相加速度", channel_name='Z-轴加速度均方根值', overrun_times=3,
+                          channel_field='AcceleratedSpeed_Z', unit='m/s²', is_monitor=1, channel_id=1)
 
 
 class Migration(migrations.Migration):
@@ -45,15 +47,18 @@ class Migration(migrations.Migration):
             name='sensorConfig',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('sensor_code', models.CharField(max_length=32, serialize=False)),
+                ('sensor_code', models.CharField(max_length=32, null=True)),
                 ('sensor_name', models.CharField(max_length=32, null=True)),
                 ('frequency', models.IntegerField(null=True)),
                 ('channel_number', models.IntegerField(null=True)),
+                ('command_code', models.CharField(max_length=32, null=True)),
                 ('remark', models.CharField(max_length=32, null=True)),
                 ('measurement', models.CharField(max_length=32, null=True)),
                 ('sensor_status', models.BooleanField(default=2)),
                 ('operational_status', models.BooleanField(default=True)),
-                ('config_id', models.IntegerField(default=1)),
+                ('thread_flag', models.BooleanField(default=True)),
+                ('sensor_port', models.IntegerField(null=True)),
+                ('config_id', models.IntegerField(default=1, null=True)),
                 ('sensor_image', models.ImageField(null=True, upload_to='Sensor/')),
 
             ],

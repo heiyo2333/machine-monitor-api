@@ -22,10 +22,12 @@ def create_initial_data(apps, schema_editor):
     # 初始化部件-主轴
     Model2.objects.create(id=1, config_id=1, machine_code='vmc850', machine_name='大恒机床VMC850',
                           component_code='vmc850-主轴电机', component_name='主轴电机', algorithm_id=1,
-                          algorithm_name='主轴-SVM', component_status='正常', monitor_status='1')
+                          algorithm_name='主轴-SVM', component_status='正常', monitor_status='1',
+                          algorithm_channel_data='[{"sensor":2,"channel":15},{"sensor":2,"channel":12},{"sensor":2,"channel":12}]',)
     Model2.objects.create(id=2, config_id=1, machine_code='vmc850', machine_name='大恒机床VMC850',
                           component_code='vmc850-减速器', component_name='减速器',
-                          algorithm_id=3, algorithm_name='减速器-SVM', component_status='正常', monitor_status='1')
+                          algorithm_id=3, algorithm_name='减速器-SVM', component_status='正常', monitor_status='1',
+                          algorithm_channel_data='[{"sensor":2,"channel":15},{"sensor":2,"channel":12},{"sensor":2,"channel":12}]',)
 
     Model3.objects.create(id=1, sensor_id=2, channel_id=4, algorithm_channel_id=1)
     Model3.objects.create(id=2, sensor_id=2, channel_id=5, algorithm_channel_id=1)
@@ -55,6 +57,7 @@ class Migration(migrations.Migration):
                 ('algorithm_id', models.IntegerField(null=True)),
                 ('algorithm_name', models.CharField(max_length=32, null=True)),
                 ('algorithm_channel_data', models.CharField(max_length=32, null=True)),
+                ('sensor_id', models.IntegerField(null=True)),
                 ('remark', models.CharField(max_length=32, null=True)),
                 ('component_status', models.CharField(max_length=32, null=True)),
                 ('monitor_status', models.BooleanField(default=False)),
