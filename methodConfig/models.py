@@ -21,7 +21,7 @@ class componentConfig(models.Model):
     algorithm_name = models.CharField(max_length=32, null=True)  # 算法名称
     algorithm_channel_data = models.CharField(max_length=32, null=True)  # 算法通道
     remark = models.CharField(max_length=32, null=True)  # 备注
-
+    sensor_id = models.IntegerField(null=True)
     component_status = models.CharField(max_length=32, null=False)  # 部件运行状态
     monitor_status = models.BooleanField(default=False)  # 监测状态
 

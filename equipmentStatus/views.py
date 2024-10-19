@@ -1,7 +1,7 @@
 import json
 import random
 import time
-
+import struct
 import numpy as np
 from django.db.models import Q, Max
 from django.http import JsonResponse
@@ -15,14 +15,107 @@ from datetime import datetime, timedelta
 from rest_framework import viewsets
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.authentication import BasicAuthentication
-
+import socket
 import methodConfig
 import systemConfig
 from methodConfig.views import get_local_ip
 from . import models, serializer
 from .models import thermalDiagram
+import threading
+class DatabaseManager:
+    def __init__(self):
+        influxdb_ip = 'localhost'  # 时序数据库ip：默认用本地
+        influxdb_port = 8086  # InfluxDB 服务器的端口，默认是 8086
+        username = 'admin'  # 可选，如果设置了用户名和密码
+        password = 'admin'  # 可选，如果设置了用户名和密码
+        client = InfluxDBClient(host=influxdb_ip, port=influxdb_port, username=username, password=password)
+        self.client = client
 
+    def createDatabase(self, new_database):
+        self.client.create_database(new_database)
 
+    def connect_database(self, database_name):
+        # 获取所有数据库的列表
+        database_list = self.client.get_list_database()
+        print('现有数据库列表:', database_list)
+
+        # 检查是否存在名为 'database_name' 的数据库
+        if any(db['name'] == database_name for db in database_list):
+            print(f"数据库 '{database_name}' 已存在。")
+        else:
+            print(f"数据库 '{database_name}' 不存在，正在创建数据库。")
+            self.create_database(database_name)
+
+    def detect_sensor(self, sensor_id, ip, sensor_port, command_vibrate, time_out, receive_number, measurement, field_list):
+        response_temp = b''
+        while True:
+            sensor = systemConfig.models.sensorConfig.objects.filter(id=sensor_id)
+            if sensor.exists():
+                thread_flag = sensor.first().thread_flag
+                if thread_flag == 0:
+                    break
+            else:
+                return
+            try:
+                client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                client_socket.settimeout(time_out)
+                client_socket.connect((ip, sensor_port))
+                print(f"成功连接到 {ip}:{sensor_port}")
+                while True:
+                    try:
+                        client_socket.sendall(command_vibrate)
+                        time.sleep(0.15)
+                        response = client_socket.recv(receive_number)
+                        if response == response_temp:
+                            continue
+                        response_temp = response
+                        # 从响应中提取数据部分 (跳过前面3个字节: 从站地址、功能码、字节数;) # -2是为了去掉最后的CRC校验
+                        data_section = response[3:-2]
+                        # 每两个字节表示一个寄存器的值
+                        if receive_number == 46:
+                            registers = struct.unpack('>9H', data_section)  # '>'表示大端，'9H'表示9个无符号短整型数
+                            # 将寄存器的值存储在一个列表中
+                            registers_list = list(registers)
+                            scaled_registers_list = [value / 100 for value in registers_list]
+                        else:
+                            registers = struct.unpack('>3I', data_section)  # '>'表示大端，'3I'表示3个无符号短整型数
+                            # 将寄存器的值存储在一个列表中
+                            registers_list = list(registers)
+                            scaled_registers_list = [value / 100 for value in registers_list]
+
+                        field_dict = {}
+                        for field, value in zip(field_list, scaled_registers_list):
+                            field_dict[field] = value
+                        point = [
+                            {
+                                'measurement': measurement,
+                                'fields': field_dict
+                            }]
+                        self.client.write_points(point)
+                    except Exception as e:
+                        print(f"发生错误: {e}")
+                        continue
+            except socket.error as e:
+                print(f"无法连接到 {ip}:{sensor_port}，错误信息：{e}")
+                time.sleep(0.5)  # 重试前等待一段时间
+
+            finally:
+                client_socket.close()
+
+    def start_sensor_threads(self, sensors, ip):
+        threads = []
+        for sensor in sensors:
+            t = threading.Thread(target=self.detect_sensor,
+                                 args=(ip,
+                                       sensor['sensor_id'],
+                                       sensor['sensor_port'],
+                                       sensor['command_vibrate'],
+                                       sensor['time_out'],
+                                       sensor['receive_number'],
+                                       sensor['field_list'])
+                                 )
+            t.start()
+            threads.append(t)
 class EquipmentStatusViewSet(viewsets.GenericViewSet):
     authentication_classes = (BasicAuthentication,)
     parser_classes = (MultiPartParser, FormParser)
@@ -84,7 +177,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
     def monitorOn(self, request):
         id = self.request.query_params.get('id')
         machineStatus = methodConfig.models.componentConfig.objects.get(id=id)
-
+        sensor_id = machineStatus.sensor_id
         # 执行监控算法
 
         machineStatus.monitor_status = True
@@ -113,6 +206,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
         # 结束监控算法
 
         machineStatus.monitor_status = False
+        machineStatus.thread_flag = False
         machineStatus.save()
         response = {
             'status': 200,
@@ -160,7 +254,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
 
         # 结束监控算法
 
-        methodConfig.models.componentConfig.objects.filter(config_id=config_id).update(monitor_status=False)
+        methodConfig.models.componentConfig.objects.filter(config_id=config_id).update(monitor_status=False, thread_flag=False)
 
         response = {
             'status': 200,

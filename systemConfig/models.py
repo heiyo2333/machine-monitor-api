@@ -20,7 +20,7 @@ class systemConfig(models.Model):
 
 # 传感器配置
 class sensorConfig(models.Model):
-    sensor_code = models.CharField(max_length=32)  # 传感器编号
+    sensor_code = models.CharField(max_length=32, null=True)  # 传感器编号
     sensor_name = models.CharField(max_length=32, null=True)  # 传感器名称
     frequency = models.IntegerField(null=True)  # 采样频率
     channel_number = models.IntegerField(null=True)  # 通道数
@@ -28,7 +28,10 @@ class sensorConfig(models.Model):
     remark = models.CharField(max_length=32, null=True)  # 备注
     sensor_status = models.BooleanField(default=0)  # 状态 1：开启 0：关闭
     operational_status = models.BooleanField(default=True)  # 运行状态
+    thread_flag = models.BooleanField(default=0)  # 多线程标志位
     sensor_image = models.ImageField(null=True, upload_to='Sensor/SensorImage/')  # 传感器图片
+    sensor_port = models.IntegerField(null=True)  # 传感器端口号
+    command_code = models.CharField(max_length=32, null=True)  # 传感器操作指令
     config_id = models.CharField(max_length=32, null=True)
 
 
