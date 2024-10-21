@@ -24,6 +24,7 @@ class componentConfig(models.Model):
     sensor_id = models.IntegerField(null=True)
     component_status = models.CharField(max_length=32, null=False)  # 部件运行状态
     monitor_status = models.BooleanField(default=False)  # 监测状态
+    ident = models.IntegerField(null=True)  # 线程号
 
 
 # 部件配置附表

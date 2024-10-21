@@ -29,6 +29,8 @@ class sensorConfig(models.Model):
     sensor_status = models.BooleanField(default=0)  # 状态 1：开启 0：关闭
     operational_status = models.BooleanField(default=True)  # 运行状态
     thread_flag = models.BooleanField(default=0)  # 多线程标志位
+    time_out = models.IntegerField(null=True)  # 超时时间
+    receive_number = models.IntegerField(null=True)  # 接收数据数量
     sensor_image = models.ImageField(null=True, upload_to='Sensor/SensorImage/')  # 传感器图片
     sensor_port = models.IntegerField(null=True)  # 传感器端口号
     command_code = models.CharField(max_length=32, null=True)  # 传感器操作指令

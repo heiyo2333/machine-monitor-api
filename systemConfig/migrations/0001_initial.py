@@ -16,7 +16,8 @@ def create_initial_data(apps, schema_editor):
                           machine_image='Machine/MachineImage/test.png', is_apply=1)
     # 初始化加速度传感器
     Model2.objects.create(id=1, sensor_code="C2310020216", sensor_name='XM减速器-三相加速度', frequency=10,
-                          channel_number=9, command_code='01 03 A6 04 00 09 E6 85', sensor_status=1, measurement='signal',
+                          sensor_port=1030, channel_number=9, command_code='01 03 A6 04 00 09 E6 85',
+                          sensor_status=1, measurement='signal', time_out=5, receive_number=46,
                           sensor_image='Sensor/SensorImage/test.png', operational_status=True, config_id=1)
     Model3.objects.create(id=1, sensor_name="XM减速器-三相加速度", channel_name='X-轴速度有效值', overrun_times=3,
                           channel_field='AcceleratedSpeed_X', unit='mm/s', is_monitor=1, channel_id=1)
@@ -58,6 +59,8 @@ class Migration(migrations.Migration):
                 ('operational_status', models.BooleanField(default=True)),
                 ('thread_flag', models.BooleanField(default=True)),
                 ('sensor_port', models.IntegerField(null=True)),
+                ('time_out', models.IntegerField(null=True)),
+                ('receive_number', models.IntegerField(null=True)),
                 ('config_id', models.IntegerField(default=1, null=True)),
                 ('sensor_image', models.ImageField(null=True, upload_to='Sensor/')),
 

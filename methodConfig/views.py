@@ -702,7 +702,8 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
                 field_time = str(
                     (datetime.strptime(point.get('time'), '%Y-%m-%dT%H:%M:%S.%fZ') + timedelta(hours=8)).strftime(
                         '%Y-%m-%d %H:%M:%S.%f')[:-5])
-                field_value = point.get('fields1_power')
+                filed = channel.channel_field
+                field_value = point.get(filed)
                 if (field_time is not None) or (field_value is not None):
                     xData.append(field_time)
                     yData.append(field_value)
@@ -774,7 +775,9 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
             field_time = str(
                 (datetime.strptime(point.get('time'), '%Y-%m-%dT%H:%M:%S.%fZ') + timedelta(hours=8)).strftime(
                     '%Y-%m-%d %H:%M:%S.%f')[:-5])
-            field_value = point.get('fields1_power')
+            filed = channel.channel_field
+            field_value = point.get(filed)
+            print('field_value', field_value)
 
             data = {
                 'xAxisName': '时间',
