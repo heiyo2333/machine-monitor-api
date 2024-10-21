@@ -22,100 +22,259 @@ from methodConfig.views import get_local_ip
 from . import models, serializer
 from .models import thermalDiagram
 import threading
-class DatabaseManager:
-    def __init__(self):
-        influxdb_ip = 'localhost'  # 时序数据库ip：默认用本地
-        influxdb_port = 8086  # InfluxDB 服务器的端口，默认是 8086
-        username = 'admin'  # 可选，如果设置了用户名和密码
-        password = 'admin'  # 可选，如果设置了用户名和密码
-        client = InfluxDBClient(host=influxdb_ip, port=influxdb_port, username=username, password=password)
-        self.client = client
 
-    def createDatabase(self, new_database):
-        self.client.create_database(new_database)
-
-    def connect_database(self, database_name):
-        # 获取所有数据库的列表
-        database_list = self.client.get_list_database()
-        print('现有数据库列表:', database_list)
-
-        # 检查是否存在名为 'database_name' 的数据库
-        if any(db['name'] == database_name for db in database_list):
-            print(f"数据库 '{database_name}' 已存在。")
+# class DatabaseManager:
+#     def __init__(self):
+#         influxdb_ip = 'localhost'  # 时序数据库ip：默认用本地
+#         influxdb_port = 8086  # InfluxDB 服务器的端口，默认是 8086
+#         username = 'admin'  # 可选，如果设置了用户名和密码
+#         password = 'admin'  # 可选，如果设置了用户名和密码
+#         client = InfluxDBClient(host=influxdb_ip, port=influxdb_port, username=username, password=password)
+#         self.client = client
+#
+#     def createDatabase(self, new_database):
+#         self.client.create_database(new_database)
+#
+#     def connect_database(self, database_name):
+#         # 获取所有数据库的列表
+#         database_list = self.client.get_list_database()
+#         print('现有数据库列表:', database_list)
+#
+#         # 检查是否存在名为 'database_name' 的数据库
+#         if any(db['name'] == database_name for db in database_list):
+#             print(f"数据库 '{database_name}' 已存在。")
+#         else:
+#             print(f"数据库 '{database_name}' 不存在，正在创建数据库。")
+#             self.createDatabase(database_name)
+#
+#     def detect_sensor(self, ip, sensor_id, sensor_port, command_vibrate, time_out, receive_number, measurement, field_list):
+#         response_temp = b''
+#         while True:
+#             sensor = systemConfig.models.sensorConfig.objects.filter(id=sensor_id)
+#             if sensor.exists():
+#                 thread_flag = sensor.first().thread_flag
+#                 if thread_flag == 0:
+#                     break
+#             else:
+#                 return
+#             try:
+#                 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+#                 client_socket.settimeout(time_out)
+#                 client_socket.connect((ip, sensor_port))
+#                 print(f"成功连接到 {ip}:{sensor_port}")
+#                 while True:
+#                     try:
+#                         client_socket.sendall(command_vibrate)
+#                         time.sleep(0.15)
+#                         response = client_socket.recv(receive_number)
+#                         if response == response_temp:
+#                             continue
+#                         response_temp = response
+#                         # 从响应中提取数据部分 (跳过前面3个字节: 从站地址、功能码、字节数;) # -2是为了去掉最后的CRC校验
+#                         data_section = response[3:-2]
+#                         # 每两个字节表示一个寄存器的值
+#                         if receive_number == 46:
+#                             registers = struct.unpack('>9H', data_section)  # '>'表示大端，'9H'表示9个无符号短整型数
+#                             # 将寄存器的值存储在一个列表中
+#                             registers_list = list(registers)
+#                             scaled_registers_list = [value / 100 for value in registers_list]
+#                         else:
+#                             registers = struct.unpack('>3I', data_section)  # '>'表示大端，'3I'表示3个无符号短整型数
+#                             # 将寄存器的值存储在一个列表中
+#                             registers_list = list(registers)
+#                             scaled_registers_list = [value / 100 for value in registers_list]
+#
+#                         field_dict = {}
+#                         for field, value in zip(field_list, scaled_registers_list):
+#                             field_dict[field] = value
+#                         point = [
+#                             {
+#                                 'measurement': measurement,
+#                                 'fields': field_dict
+#                             }]
+#                         self.client.write_points(point)
+#                     except Exception as e:
+#                         print(f"发生错误: {e}")
+#                         continue
+#             except socket.error as e:
+#                 print(f"无法连接到 {ip}:{sensor_port}，错误信息：{e}")
+#                 time.sleep(0.5)  # 重试前等待一段时间
+#
+#             finally:
+#                 client_socket.close()
+#
+#     def start_sensor_threads(self, sensors, ip):
+#         threads = []
+#         for sensor in sensors:
+#             t = threading.Thread(target=self.detect_sensor,
+#                                  args=(ip,
+#                                        sensor['sensor_id'],
+#                                        sensor['sensor_port'],
+#                                        sensor['command_code'],
+#                                        sensor['time_out'],
+#                                        sensor['receive_number'],
+#                                        sensor['measurement'],
+#                                        sensor['field_list'])
+#                                  )
+#             t.start()
+#             threads.append(t)
+def detect_sensor(client, ip, sensor_id, sensor_port, command_code, time_out, receive_number, measurement, field_list):
+    response_temp = b''
+    while True:
+        sensor = systemConfig.models.sensorConfig.objects.filter(id=sensor_id)
+        if sensor.exists():
+            thread_flag = sensor.first().thread_flag
+            if thread_flag == 0:
+                break
         else:
-            print(f"数据库 '{database_name}' 不存在，正在创建数据库。")
-            self.create_database(database_name)
-
-    def detect_sensor(self, sensor_id, ip, sensor_port, command_vibrate, time_out, receive_number, measurement, field_list):
-        response_temp = b''
-        while True:
-            sensor = systemConfig.models.sensorConfig.objects.filter(id=sensor_id)
-            if sensor.exists():
-                thread_flag = sensor.first().thread_flag
-                if thread_flag == 0:
-                    break
-            else:
-                return
-            try:
-                client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                client_socket.settimeout(time_out)
-                client_socket.connect((ip, sensor_port))
-                print(f"成功连接到 {ip}:{sensor_port}")
-                while True:
-                    try:
-                        client_socket.sendall(command_vibrate)
-                        time.sleep(0.15)
-                        response = client_socket.recv(receive_number)
-                        if response == response_temp:
-                            continue
-                        response_temp = response
-                        # 从响应中提取数据部分 (跳过前面3个字节: 从站地址、功能码、字节数;) # -2是为了去掉最后的CRC校验
-                        data_section = response[3:-2]
-                        # 每两个字节表示一个寄存器的值
-                        if receive_number == 46:
-                            registers = struct.unpack('>9H', data_section)  # '>'表示大端，'9H'表示9个无符号短整型数
-                            # 将寄存器的值存储在一个列表中
-                            registers_list = list(registers)
-                            scaled_registers_list = [value / 100 for value in registers_list]
-                        else:
-                            registers = struct.unpack('>3I', data_section)  # '>'表示大端，'3I'表示3个无符号短整型数
-                            # 将寄存器的值存储在一个列表中
-                            registers_list = list(registers)
-                            scaled_registers_list = [value / 100 for value in registers_list]
-
-                        field_dict = {}
-                        for field, value in zip(field_list, scaled_registers_list):
-                            field_dict[field] = value
-                        point = [
-                            {
-                                'measurement': measurement,
-                                'fields': field_dict
-                            }]
-                        self.client.write_points(point)
-                    except Exception as e:
-                        print(f"发生错误: {e}")
+            return
+        try:
+            client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client_socket.settimeout(time_out)
+            client_socket.connect((ip, sensor_port))
+            print(f"成功连接到 {ip}:{sensor_port}")
+            while True:
+                try:
+                    client_socket.sendall(command_code)
+                    time.sleep(0.15)
+                    response = client_socket.recv(receive_number)
+                    if response == response_temp:
                         continue
-            except socket.error as e:
-                print(f"无法连接到 {ip}:{sensor_port}，错误信息：{e}")
-                time.sleep(0.5)  # 重试前等待一段时间
+                    response_temp = response
+                    # 从响应中提取数据部分 (跳过前面3个字节: 从站地址、功能码、字节数;) # -2是为了去掉最后的CRC校验
+                    data_section = response[3:-2]
+                    # 每两个字节表示一个寄存器的值
+                    if receive_number == 46:
+                        registers = struct.unpack('>9H', data_section)  # '>'表示大端，'9H'表示9个无符号短整型数
+                        # 将寄存器的值存储在一个列表中
+                        registers_list = list(registers)
+                        scaled_registers_list = [value / 100 for value in registers_list]
+                    else:
+                        registers = struct.unpack('>3I', data_section)  # '>'表示大端，'3I'表示3个无符号短整型数
+                        # 将寄存器的值存储在一个列表中
+                        registers_list = list(registers)
+                        scaled_registers_list = [value / 100 for value in registers_list]
+                        print('scaled_registers_list', scaled_registers_list)
 
-            finally:
-                client_socket.close()
+                    field_dict = {}
+                    for field, value in zip(field_list, scaled_registers_list):
+                        field_dict[field] = value
+                    point = [
+                        {
+                            'measurement': measurement,
+                            'fields': field_dict
+                        }]
+                    client.write_points(point)
+                except Exception as e:
+                    print(f"发生错误: {e}")
+                    continue
+        except socket.error as e:
+            print(f"无法连接到 {ip}:{sensor_port}，错误信息：{e}")
+            time.sleep(0.5)  # 重试前等待一段时间
 
-    def start_sensor_threads(self, sensors, ip):
-        threads = []
-        for sensor in sensors:
-            t = threading.Thread(target=self.detect_sensor,
-                                 args=(ip,
-                                       sensor['sensor_id'],
-                                       sensor['sensor_port'],
-                                       sensor['command_vibrate'],
-                                       sensor['time_out'],
-                                       sensor['receive_number'],
-                                       sensor['field_list'])
-                                 )
-            t.start()
-            threads.append(t)
+        finally:
+            client_socket.close()
+
+
+def createDatabase(client, new_database):
+    client.create_database(new_database)
+    return
+
+
+def connect_database(database_name):
+    influxdb_ip = 'localhost'  # 时序数据库ip：默认用本地
+    influxdb_port = 8086  # InfluxDB 服务器的端口，默认是 8086
+    username = 'admin'  # 可选，如果设置了用户名和密码
+    password = 'admin'  # 可选，如果设置了用户名和密码
+    client_temp = InfluxDBClient(host=influxdb_ip, port=influxdb_port, username=username, password=password)
+    # 获取所有数据库的列表
+    database_list = client_temp.get_list_database()
+    print('现有数据库列表:', database_list)
+
+    # 检查是否存在名为 'database_name' 的数据库
+    if any(db['name'] == database_name for db in database_list):
+        print(f"数据库 '{database_name}' 已存在。")
+    else:
+        print(f"数据库 '{database_name}' 不存在，正在创建数据库。")
+        createDatabase(client_temp, database_name)
+    client_temp.close()
+    return
+
+    # def detect_sensor(self, ip, sensor_id, sensor_port, command_code, time_out, receive_number, measurement, field_list):
+    #     response_temp = b''
+    #     while True:
+    #         sensor = systemConfig.models.sensorConfig.objects.filter(id=sensor_id)
+    #         if sensor.exists():
+    #             thread_flag = sensor.first().thread_flag
+    #             if thread_flag == 0:
+    #                 break
+    #         else:
+    #             return
+    #         try:
+    #             client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    #             client_socket.settimeout(time_out)
+    #             client_socket.connect((ip, sensor_port))
+    #             print(f"成功连接到 {ip}:{sensor_port}")
+    #             while True:
+    #                 try:
+    #                     client_socket.sendall(command_code)
+    #                     time.sleep(0.15)
+    #                     response = client_socket.recv(receive_number)
+    #                     if response == response_temp:
+    #                         continue
+    #                     response_temp = response
+    #                     # 从响应中提取数据部分 (跳过前面3个字节: 从站地址、功能码、字节数;) # -2是为了去掉最后的CRC校验
+    #                     data_section = response[3:-2]
+    #                     # 每两个字节表示一个寄存器的值
+    #                     if receive_number == 46:
+    #                         registers = struct.unpack('>9H', data_section)  # '>'表示大端，'9H'表示9个无符号短整型数
+    #                         # 将寄存器的值存储在一个列表中
+    #                         registers_list = list(registers)
+    #                         scaled_registers_list = [value / 100 for value in registers_list]
+    #                     else:
+    #                         registers = struct.unpack('>3I', data_section)  # '>'表示大端，'3I'表示3个无符号短整型数
+    #                         # 将寄存器的值存储在一个列表中
+    #                         registers_list = list(registers)
+    #                         scaled_registers_list = [value / 100 for value in registers_list]
+    #                         print('scaled_registers_list', scaled_registers_list)
+    #
+    #                     field_dict = {}
+    #                     for field, value in zip(field_list, scaled_registers_list):
+    #                         field_dict[field] = value
+    #                     point = [
+    #                         {
+    #                             'measurement': measurement,
+    #                             'fields': field_dict
+    #                         }]
+    #                     self.client.write_points(point)
+    #                 except Exception as e:
+    #                     print(f"发生错误: {e}")
+    #                     continue
+    #         except socket.error as e:
+    #             print(f"无法连接到 {ip}:{sensor_port}，错误信息：{e}")
+    #             time.sleep(0.5)  # 重试前等待一段时间
+    #
+    #         finally:
+    #             client_socket.close()
+
+    # def start_sensor_threads(self, sensors, ip):
+    #     threads = []
+    #     print(sensors)
+    #     for sensor in sensors:
+    #         t = threading.Thread(target=self.detect_sensor,
+    #                              args=(ip,
+    #                                    sensor['sensor_id'],
+    #                                    sensor['sensor_port'],
+    #                                    sensor['command_code'],
+    #                                    sensor['time_out'],
+    #                                    sensor['receive_number'],
+    #                                    sensor['measurement'],
+    #                                    sensor['field_list'])
+    #                              )
+    #         t.start()
+    #         threads.append(t)
+
+
 class EquipmentStatusViewSet(viewsets.GenericViewSet):
     authentication_classes = (BasicAuthentication,)
     parser_classes = (MultiPartParser, FormParser)
@@ -177,10 +336,53 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
     def monitorOn(self, request):
         id = self.request.query_params.get('id')
         machineStatus = methodConfig.models.componentConfig.objects.get(id=id)
+        machines = systemConfig.models.systemConfig.objects.filter(is_apply=1)
+        if not machines.exists():
+            response = {
+                'status': 500,
+                'message': '机床未应用'
+            }
+            return JsonResponse(response)
+
+        influxdb_name = machines.first().database_name
+        machine_ip = machines.first().machine_ip
+
+        connect_database(influxdb_name)
+        client = InfluxDBClient(host='localhost', port=8086, username='admin', password='admin',
+                                database=influxdb_name)
         sensor_id = machineStatus.sensor_id
+        sensor = systemConfig.models.sensorConfig.objects.get(id=sensor_id)
+        channels = systemConfig.models.channelConfig.objects.filter(channel_id=sensor_id).order_by('id')
+        field_list = []
+
+        # 遍历所有符合条件的 channelConfig 对象，将其 field 字段加入 field_list
+        for H in channels:
+            field_list.append(H.channel_field)  # 将 field 拼接到 field_list 中
+
+        # detected_sensors = [
+        #     {
+        #         'sensor_id': sensor_id,
+        #         'sensor_port': sensor.sensor_port,  # 假设传感器的Modbus端口
+        #         'command_code': sensor.command_code,  # 这是一个示例的Modbus指令
+        #         'time_out': sensor.time_out,  # 5秒超时
+        #         'receive_number': sensor.receive_number,  # 预期接收46个字节
+        #         'measurement': sensor.measurement,
+        #         'field_list': field_list,
+        #         # 对应的字段
+        #     }
+        # ]
+        t = threading.Thread(target=detect_sensor, args=(client, machine_ip,
+                                                     sensor_id,
+                                                     sensor.sensor_port,
+                                                     sensor.command_code,
+                                                     sensor.time_out,
+                                                     sensor.receive_number,
+                                                     sensor.measurement,
+                                                     field_list)).start()
         # 执行监控算法
 
         machineStatus.monitor_status = True
+        machineStatus.ident =t.ident
         machineStatus.save()
         response = {
             'status': 200,
@@ -202,11 +404,19 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
     def monitorOff(self, request):
         id = self.request.query_params.get('id')
         machineStatus = methodConfig.models.componentConfig.objects.get(id=id)
-
+        machines = systemConfig.models.systemConfig.objects.filter(is_apply=1)
+        if not machines.exists():
+            response = {
+                'status': 500,
+                'message': '机床未应用'
+            }
+            return JsonResponse(response)
+        sensor_id = machineStatus.sensor_id
+        sensor = systemConfig.models.sensorConfig.objects.get(id=sensor_id)
         # 结束监控算法
-
+        sensor.thread_flag = 0
+        sensor.save()
         machineStatus.monitor_status = False
-        machineStatus.thread_flag = False
         machineStatus.save()
         response = {
             'status': 200,
@@ -254,7 +464,8 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
 
         # 结束监控算法
 
-        methodConfig.models.componentConfig.objects.filter(config_id=config_id).update(monitor_status=False, thread_flag=False)
+        methodConfig.models.componentConfig.objects.filter(config_id=config_id).update(monitor_status=False,
+                                                                                       thread_flag=False)
 
         response = {
             'status': 200,
@@ -757,7 +968,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
                         [0, 100],
                         [1, 97],
                         [2, 96
-                        ],
+                         ],
                         [
                             3,
                             94
