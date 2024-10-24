@@ -45,29 +45,6 @@ class Migration(migrations.Migration):
     ]
     operations = [
         migrations.CreateModel(
-            name='sensorConfig',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('sensor_code', models.CharField(max_length=32, null=True)),
-                ('sensor_name', models.CharField(max_length=32, null=True)),
-                ('frequency', models.IntegerField(null=True)),
-                ('channel_number', models.IntegerField(null=True)),
-                ('command_code', models.CharField(max_length=32, null=True)),
-                ('remark', models.CharField(max_length=32, null=True)),
-                ('measurement', models.CharField(max_length=32, null=True)),
-                ('sensor_status', models.BooleanField(default=2)),
-                ('operational_status', models.BooleanField(default=True)),
-                ('thread_flag', models.BooleanField(default=True)),
-                ('sensor_port', models.IntegerField(null=True)),
-                ('time_out', models.IntegerField(null=True)),
-                ('receive_number', models.IntegerField(null=True)),
-                ('config_id', models.IntegerField(default=1, null=True)),
-                ('sensor_image', models.ImageField(null=True, upload_to='Sensor/')),
-                ('ruler', models.CharField(max_length=32, null=True)),
-
-            ],
-        ),
-        migrations.CreateModel(
             name='systemConfig',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
@@ -85,6 +62,38 @@ class Migration(migrations.Migration):
                 ('is_apply', models.BooleanField(default=0)),
                 ('machine_image', models.ImageField(null=True, upload_to='MachineImage/')),  # 机床图片
                 ('detect_ident', models.IntegerField(null=True)),
+            ],
+        ),
+        migrations.CreateModel(
+            name='sensorConfig',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('sensor_code', models.CharField(max_length=32, null=True)),
+                ('sensor_name', models.CharField(max_length=32, null=True)),
+                ('frequency', models.IntegerField(null=True)),
+                ('channel_number', models.IntegerField(null=True)),
+                ('command_code', models.CharField(max_length=32, null=True)),
+                ('remark', models.CharField(max_length=32, null=True)),
+                ('measurement', models.CharField(max_length=32, null=True)),
+                ('sensor_status', models.BooleanField(default=2)),
+                ('operational_status', models.BooleanField(default=True)),
+                ('thread_flag', models.BooleanField(default=True)),
+                ('sensor_port', models.IntegerField(null=True)),
+                ('time_out', models.IntegerField(null=True)),
+                ('receive_number', models.IntegerField(null=True)),
+                ('config_id', models.IntegerField(default=1, null=True)),
+                ('sensor_image', models.ImageField(null=True, upload_to='Sensor/SensorImage/')),
+                ('ruler', models.CharField(max_length=32, null=True)),
+            ],
+        ),
+        migrations.CreateModel(
+            name='influxDataConfig',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('date', models.CharField(max_length=32, null=True)),
+                ('influx_file', models.ImageField(null=True, upload_to='Sensor/SensorData/')),
+                ('remark', models.CharField(max_length=32, null=True)),
+                ('sensor', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='systemConfig.sensorconfig')),
             ],
         ),
         migrations.CreateModel(

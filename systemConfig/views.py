@@ -310,6 +310,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
                 'alarm_data_delay_negative': configuration1.alarm_data_delay_negative,
                 'machine_image': f"http://{get_local_ip()}:8000" + configuration1.machine_image.url if configuration1.machine_image else None
             }
+            print('ip：', get_local_ip())
             response = {
                 'data': data,
                 'status': 200,
@@ -331,6 +332,8 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
                               required=True),
             openapi.Parameter('config_id', openapi.IN_QUERY, description='系统配置id', type=openapi.TYPE_INTEGER,
                               required=False),
+            openapi.Parameter('sensor_code', openapi.IN_QUERY, description='传感器编号', type=openapi.TYPE_INTEGER,
+                              required=False),
         ],
         responses={200: openapi.Response('successful', serializer.sensorQuerysserializer)},
         tags=["sensor"],
@@ -338,8 +341,9 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['get'])
     def sensorDisplay(self, request):
         pageSize = int(self.request.query_params.get('pageSize'))
-
         current = int(self.request.query_params.get('current'))
+        sensor_code = self.request.query_params.get('sensor_code')
+        print('sensor_code', sensor_code)
         pageSize = int(pageSize)
         current = int(current)
         config_id = models.systemConfig.objects.get(is_apply=1).id
@@ -355,6 +359,8 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         else:
             config_id = models.systemConfig.objects.filter(is_apply=True).first().id
             sensor_magazine_all = sensor.all()
+        if sensor_code is not None:
+            sensor_magazine_all = sensor_magazine_all.filter(sensor_code=sensor_code)
         total = sensor_magazine_all.count()
         sensor_magazine_all = sensor_magazine_all[first:last]
         result_list = []
@@ -507,7 +513,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             sensor.sensor_port = sensor_port
             sensor.command_code = command_code
             sensor.ruler = ruler
-            sensor.receive_number=receive_number
+            sensor.receive_number = receive_number
 
             if models.systemConfig.objects.filter(id=config_id).exists():
                 sensor.config_id = config_id
@@ -657,31 +663,24 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     def channelConfigupdate(self, request):
         id = self.request.data.get('id')
         if models.channelConfig.objects.filter(id=id).exists():
-            if models.channelConfig.objects.get(id=id).is_monitor == 1:
-                response = {
-                    'status': 500,
-                    'message': '请先关闭通道监控'
-                }
-                return JsonResponse(response)
-            else:
-                channel_name = self.request.data.get('channel_name')
-                overrun_times = self.request.data.get('overrun_times')
-                channel_field = self.request.data.get('channel_field')
-                remark = self.request.data.get('remark')
-                unit = self.request.data.get('unit')
+            channel_name = self.request.data.get('channel_name')
+            overrun_times = self.request.data.get('overrun_times')
+            channel_field = self.request.data.get('channel_field')
+            remark = self.request.data.get('remark')
+            unit = self.request.data.get('unit')
 
-                configuration = models.channelConfig.objects.filter(id=id)
-                configuration.update(channel_name=channel_name,
-                                     overrun_times=overrun_times,
-                                     channel_field=channel_field,
-                                     remark=remark,
-                                     unit=unit
-                                     )
-                response = {
-                    'status': 200,
-                    'message': '修改成功'
-                }
-                return JsonResponse(response)
+            configuration = models.channelConfig.objects.filter(id=id)
+            configuration.update(channel_name=channel_name,
+                                 overrun_times=overrun_times,
+                                 channel_field=channel_field,
+                                 remark=remark,
+                                 unit=unit
+                                 )
+            response = {
+                'status': 200,
+                'message': '修改成功'
+            }
+            return JsonResponse(response)
         response = {
             'status': 500,
             'message': '该通道id不存在'
