@@ -7,7 +7,6 @@ import django.db.models.deletion
 def create_initial_data(apps, schema_editor):
     Model1 = apps.get_model('methodConfig', 'algorithmConfig')
     Model2 = apps.get_model('methodConfig', 'componentConfig')
-    Model3 = apps.get_model('methodConfig', 'algorithmChannel')
 
     Model1.objects.create(id=1, algorithm_code='SF-SVM-01', algorithm_name='主轴-SVM', algorithm_channel_number='3',
                           algorithm_file='AlgorithmFile/test.py')
@@ -28,14 +27,6 @@ def create_initial_data(apps, schema_editor):
                           component_code='vmc850-减速器', component_name='减速器',
                           algorithm_id=3, algorithm_name='减速器-SVM', component_status='正常', monitor_status='1',
                           algorithm_channel_data='[{"sensor":2,"channel":15},{"sensor":2,"channel":12},{"sensor":2,"channel":12}]',)
-
-    Model3.objects.create(id=1, sensor_id=2, channel_id=4, algorithm_channel_id=1)
-    Model3.objects.create(id=2, sensor_id=2, channel_id=5, algorithm_channel_id=1)
-    Model3.objects.create(id=3, sensor_id=2, channel_id=6, algorithm_channel_id=1)
-
-    Model3.objects.create(id=4, sensor_id=2, channel_id=4, algorithm_channel_id=2)
-    Model3.objects.create(id=5, sensor_id=2, channel_id=5, algorithm_channel_id=2)
-    Model3.objects.create(id=6, sensor_id=2, channel_id=6, algorithm_channel_id=2)
 
 
 class Migration(migrations.Migration):
@@ -74,15 +65,6 @@ class Migration(migrations.Migration):
                 ('remark', models.CharField(max_length=32, null=True)),
             ],
         ),
-        migrations.CreateModel(
-            name='algorithmChannel',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('sensor_id', models.IntegerField(null=True)),
-                ('channel_id', models.IntegerField(null=True)),
-                ('algorithm_channel',
-                 models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='methodConfig.componentconfig')),
-            ],
-        ),
+
         migrations.RunPython(create_initial_data),
     ]

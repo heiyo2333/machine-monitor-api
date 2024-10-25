@@ -90,7 +90,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         manager = self.request.data.get('manager')
         machine_ip = self.request.data.get('machine_ip')
         machine_port = self.request.data.get('machine_port')
-        tool_number = self.request.data.get('tool_number')
+        # tool_number = self.request.data.get('tool_number')
         database_name = self.request.data.get('database_name')
         alarm_data_delay_positive = self.request.data.get('alarm_data_delay_positive')
         alarm_data_delay_negative = self.request.data.get('alarm_data_delay_negative')
@@ -104,7 +104,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             manager=manager,
             machine_ip=machine_ip,
             machine_port=machine_port,
-            tool_number=tool_number,
+            # tool_number=tool_number,
             database_name=database_name,
             alarm_data_delay_positive=alarm_data_delay_positive,
             alarm_data_delay_negative=alarm_data_delay_negative,
@@ -145,7 +145,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             manager = serializer.validated_data['manager']
             machine_ip = serializer.validated_data['machine_ip']
             machine_port = serializer.validated_data['machine_port']
-            tool_number = serializer.validated_data['tool_number']
+            # tool_number = serializer.validated_data['tool_number']
             database_name = serializer.validated_data['database_name']
             alarm_data_delay_positive = serializer.validated_data['alarm_data_delay_positive']
             alarm_data_delay_negative = serializer.validated_data['alarm_data_delay_negative']
@@ -159,7 +159,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             systemconfig.manager = manager
             systemconfig.machine_ip = machine_ip
             systemconfig.machine_port = machine_port
-            systemconfig.tool_number = tool_number
+            # systemconfig.tool_number = tool_number
             systemconfig.database_name = database_name
             systemconfig.alarm_data_delay_positive = alarm_data_delay_positive
             systemconfig.alarm_data_delay_negative = alarm_data_delay_negative
@@ -304,7 +304,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
                 'manager': configuration1.manager,
                 'machine_ip': configuration1.machine_ip,
                 'machine_port': configuration1.machine_port,
-                'tool_number': configuration1.tool_number,
+                # 'tool_number': configuration1.tool_number,
                 'database_name': configuration1.database_name,
                 'alarm_data_delay_positive': configuration1.alarm_data_delay_positive,
                 'alarm_data_delay_negative': configuration1.alarm_data_delay_negative,
@@ -372,7 +372,12 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
                     'machine_code': models.systemConfig.objects.get(id=config_id).machine_code,
                     'machine_name': models.systemConfig.objects.get(id=config_id).machine_name,
                     'config_id': x.config_id,
-                    'sensor_image': f"http://{get_local_ip()}:8000" + x.sensor_image.url if x.sensor_image else None
+                    'sensor_image': f"http://{get_local_ip()}:8000" + x.sensor_image.url if x.sensor_image else None,
+                    'time_out': x.time_out,
+                    'receive_number': x.receive_number,
+                    'sensor_port': x.sensor_port,
+                    'command_code': x.command_code,
+                    'ruler': x.ruler,
                 }
             )
         response_list = {
@@ -413,6 +418,11 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         # channel_field = self.request.data.get('channel_field')
 
         sensor_image_path = request.data.get('sensor_image')
+        time_out = request.data.get('time_out')
+        receive_number = request.data.get('receive_number')
+        sensor_port = request.data.get('sensor_port')
+        command_code = request.data.get('command_code')
+        ruler = request.data.get('ruler')
         # 验证 URL
 
         h = models.sensorConfig.objects.create(
@@ -422,7 +432,12 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             channel_number=channel_number,
             remark=remark,
             measurement=measurement,
-            config_id=config_id
+            config_id=config_id,
+            time_out=time_out,
+            receive_number=receive_number,
+            sensor_port=sensor_port,
+            command_code=command_code,
+            ruler=ruler,
         )
 
         # 从URL下载文件内容
@@ -462,7 +477,8 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         if serializer.is_valid():
             id = serializer.validated_data['id']
             sensor_code = serializer.validated_data['sensor_code']
-            if models.sensorConfig.objects.filter(sensor_code=sensor_code).exists():
+            sensor_code_old = models.sensorConfig.objects.get(id=id).sensor_code
+            if models.sensorConfig.objects.filter(sensor_code=sensor_code).exists() and sensor_code != sensor_code_old:
                 response = {
                     'status': 500,
                     'message': '传感器编号不能重复'
@@ -474,6 +490,11 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             sensor_image_path = serializer.validated_data['sensor_image']
             config_id = serializer.validated_data['config_id']
             measurement = serializer.validated_data['measurement']
+            time_out = serializer.validated_data['time_out']
+            receive_number = serializer.validated_data['receive_number']
+            sensor_port = serializer.validated_data['sensor_port']
+            command_code = serializer.validated_data['command_code']
+            ruler = serializer.validated_data['ruler']
             sensor = models.sensorConfig.objects.get(id=id)
 
             # 更新其他字段
@@ -482,6 +503,12 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             sensor.frequency = frequency
             sensor.measurement = measurement
             sensor.remark = remark
+            sensor.time_out = time_out
+            sensor.sensor_port = sensor_port
+            sensor.command_code = command_code
+            sensor.ruler = ruler
+            sensor.receive_number=receive_number
+
             if models.systemConfig.objects.filter(id=config_id).exists():
                 sensor.config_id = config_id
             sensor.save()
@@ -677,7 +704,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     def channelDisplay(self, request):
         sensor_id = self.request.query_params.get("id")
         if sensor_id:
-            print('sensor_id',sensor_id)
+            print('sensor_id', sensor_id)
             configuration = models.sensorConfig.objects.get(id=sensor_id)
             # 通过主表去反查附表
             channel_info = configuration.channelconfig_set.all()

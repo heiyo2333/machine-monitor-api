@@ -22,6 +22,7 @@ import systemConfig
 from .models import algorithmConfig
 from .serializer import addComponentSerializer
 
+
 def get_local_ip():
     hostname = socket.gethostname()
     local_ip = socket.gethostbyname(hostname)
@@ -348,48 +349,6 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         }
         return JsonResponse(response)
 
-    # 部件配置-算法输入通道
-    @swagger_auto_schema(
-        operation_summary='部件配置-算法输入通道',
-        # 获取参数
-        manual_parameters=[
-            openapi.Parameter('id', openapi.IN_QUERY, description='系统配置id', type=openapi.TYPE_INTEGER,
-                              required=True),
-        ],
-        responses={200: openapi.Response('successful')},
-        tags=["component"]
-    )
-    @action(detail=False, methods=['get'])
-    def channelSelect(self, request):
-        config_id = self.request.query_params.get("id")
-        sensors = systemConfig.models.sensorConfig.objects.filter(config_id=config_id, sensor_status=True)
-        requests = []
-        for i in sensors:
-            request_list = {
-                'value': i.id,
-                'label': i.sensor_name,
-                'children': []
-            }
-            channels = systemConfig.models.channelConfig.objects.filter(channel_id=i.id)
-            for j in channels:
-                child_channel = {
-                        'value': j.id,
-                        'label': j.channel_name,
-                    }
-                request_list['children'].append(child_channel)
-            requests.append(request_list)
-
-        response_list = {
-            'list': requests,
-            'total': sensors.count(),
-        }
-        response = {
-            'data': response_list,
-            'message': 'Successful',
-            'status': 200,
-        }
-        return JsonResponse(response)
-
     # 部件配置-显示
     @swagger_auto_schema(
         operation_summary='部件配置-显示',
@@ -457,35 +416,33 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['post'])
     def addComponent(self, request):
         config_id = self.request.data.get('config_id')
-        print(config_id)
         component_name = self.request.data.get('component_name')
         algorithm_id = self.request.data.get('algorithm_id')
-        print(algorithm_id)
         remark = self.request.data.get('remark')
+        sensor_id = self.request.data.get('sensor_id')
+        machines = models.componentConfig.objects.filter(sensor_id=sensor_id)
+        if machines.exists():
+            component_name = machines.first().component_name
+            response = {
+                'status': 500,
+                'message': f'该传感器已被部件：{component_name}使用',
+            }
+            return JsonResponse(response)
         algorithm_channel_data = self.request.data.get('algorithm_channel_data')
-        print(algorithm_channel_data)
-        print('1111')
-        algorithm_channel_data_json = json.loads(algorithm_channel_data)
 
         system = systemConfig.models.systemConfig.objects.get(id=config_id)
         algorithm = models.algorithmConfig.objects.get(id=algorithm_id)
         component_code = component_code_rule(component_name)
-        new_component = models.componentConfig.objects.create(config_id=config_id,
-                                                              machine_code=system.machine_code,
-                                                              machine_name=system.machine_name,
-                                                              component_name=component_name,
-                                                              component_code=component_code,
-                                                              algorithm_id=algorithm_id,
-                                                              algorithm_name=algorithm.algorithm_name,
-                                                              algorithm_channel_data=algorithm_channel_data,
-                                                              remark=remark)
-
-        # 生成新的算法使用的传感器通道
-        print(algorithm_channel_data_json)
-        for i in algorithm_channel_data_json:
-            models.algorithmChannel.objects.create(sensor_id=i["sensor"],
-                                                   channel_id=i["channel"],
-                                                   algorithm_channel_id=new_component.id, )
+        models.componentConfig.objects.create(config_id=config_id,
+                                              machine_code=system.machine_code,
+                                              machine_name=system.machine_name,
+                                              component_name=component_name,
+                                              component_code=component_code,
+                                              algorithm_id=algorithm_id,
+                                              sensor_id=sensor_id,
+                                              algorithm_name=algorithm.algorithm_name,
+                                              algorithm_channel_data=algorithm_channel_data,
+                                              remark=remark)
         response = {
             'status': 200,
             'message': '新增部件配置成功'
@@ -506,17 +463,12 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         component_name = self.request.data.get('component_name')
         algorithm_id = self.request.data.get('algorithm_id')
         remark = self.request.data.get('remark')
+        sensor_id = self.request.data.get('sensor_id')
         algorithm_channel_data = self.request.data.get('algorithm_channel_data')
 
         print(algorithm_channel_data)
-        algorithm_channel_data_json = json.loads(algorithm_channel_data)
-        # algorithm_channel_data_json = json.loads(f'[{algorithm_channel_data}]')
         system = systemConfig.models.systemConfig.objects.get(id=config_id)
         algorithm = models.algorithmConfig.objects.get(id=algorithm_id)
-
-        # 删除原来的算法使用的传感器通道
-        models.algorithmChannel.objects.filter(algorithm_channel_id=component_id).delete()
-
         component = models.componentConfig.objects.filter(id=component_id)
 
         if component_name == component.first().component_name:
@@ -530,14 +482,10 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
                          component_name=component_name,
                          component_code=component_code,
                          algorithm_id=algorithm_id,
+                         sensor_id=sensor_id,
                          algorithm_name=algorithm.algorithm_name,
                          algorithm_channel_data=algorithm_channel_data,
                          remark=remark)
-        # 生成新的算法使用的传感器通道
-        for i in algorithm_channel_data_json:
-            models.algorithmChannel.objects.create(sensor_id=i["sensor"],
-                                                   channel_id=i["channel"],
-                                                   algorithm_channel_id=component_id, )
         response = {
             'status': 200,
             'message': '编辑部件配置成功'
@@ -561,12 +509,72 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
                 'message': '部件正在监控，暂时无法删除！'
             }
         else:
-            models.algorithmChannel.objects.filter(algorithm_channel_id=id).delete()
             models.componentConfig.objects.filter(id=id).delete()
             response = {
                 'status': 200,
                 'message': '删除部件配置成功！'
             }
+        return JsonResponse(response)
+
+    # 部件配置-传感器选择下拉框
+    @swagger_auto_schema(
+        operation_summary='部件配置-传感器选择下拉框',
+        responses={200: 'Successful'},
+        tags=["component"], )
+    @action(detail=False, methods=['get'])
+    def sensorSelect(self, request):
+        query = systemConfig.models.sensorConfig.objects.all()
+        request_list = []
+        for i in query:
+            request_list.append({
+                'id': i.id,
+                'sensor_name': i.sensor_name,
+            })
+        response_list = {
+            'list': request_list,
+            'total': query.count(),
+        }
+        response = {
+            'data': response_list,
+            'message': 'Successful',
+            'status': 200,
+        }
+        return JsonResponse(response)
+
+    # 部件配置-通道下拉框
+    @swagger_auto_schema(
+        operation_summary='部件配置-通道下拉框',
+        manual_parameters=[
+            openapi.Parameter('sensor_id', openapi.IN_QUERY, description='传感器id', type=openapi.TYPE_INTEGER,
+                              required=True), ],
+        responses={200: 'Successful'},
+        tags=["component"], )
+    @action(detail=False, methods=['get'])
+    def channelSelect(self, request):
+        sensor_id = self.request.query_params.get('sensor_id')
+        channels = systemConfig.models.channelConfig.objects.filter(channel_id=sensor_id)
+        if channels.count() == 0:
+            response = {
+                'message': '该传感器下没有通道',
+                'status': 500
+            }
+            return JsonResponse(response)
+        request_list = []
+        for i in channels:
+            request_list.append({
+                'id': i.id,
+                'channel_name': i.channel_name,
+            })
+
+        response = {
+            'list': request_list,
+            'total': channels.count(),
+        }
+        response = {
+            'data': response,
+            'message': 'Successful',
+            'status': 200,
+        }
         return JsonResponse(response)
 
     # 部件配置-算法选择下拉框
@@ -620,7 +628,8 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
                     'children': []
                 }
                 request_list['children'].append(child_component)
-                sensors = systemConfig.models.sensorConfig.objects.filter(config_id=j.config_id)
+                sensor_id = j.sensor_id
+                sensors = systemConfig.models.sensorConfig.objects.filter(id=sensor_id)
                 for k in sensors:
                     child_sensor = {
                         'value': k.id,
@@ -686,7 +695,7 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
             database_name = system.database_name
             client = InfluxDBClient(host='localhost', port=8086, username='admin', password='admin',
                                     database=database_name)
-            display_number = 1000
+            display_number = 10000
             measurement = sensor.measurement
             unit = channel.unit
             query = f'SELECT * FROM "{measurement}" ORDER BY time DESC LIMIT {display_number}'

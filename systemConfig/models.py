@@ -16,6 +16,7 @@ class systemConfig(models.Model):
     alarm_data_delay_negative = models.IntegerField(null=True)  # 负延时
     is_apply = models.BooleanField(default=0)  # 应用配置
     machine_image = models.ImageField(null=True, upload_to='Machine/MachineImage/')  #机床图片
+    detect_ident = models.IntegerField(null=True)  # 传感器检测程序线程号
 
 
 # 传感器配置
@@ -35,6 +36,7 @@ class sensorConfig(models.Model):
     sensor_port = models.IntegerField(null=True)  # 传感器端口号
     command_code = models.CharField(max_length=32, null=True)  # 传感器操作指令
     config_id = models.CharField(max_length=32, null=True)
+    ruler = models.CharField(max_length=32, null=True)  # 规则
 
 
 # 通道配置

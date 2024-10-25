@@ -11,14 +11,14 @@ def create_initial_data(apps, schema_editor):
     # 初始化系统配置1
     Model1.objects.create(id=1, machine_code='vmc850', machine_name='大恒机床VMC850', machine_type='五轴加工中心',
                           machine_description='大恒机床-五轴-VMC850', manager='张三', machine_ip='192.168.110.23',
-                          machine_port=7798, tool_number=30, database_name='testdata',
+                          machine_port=7798, database_name='testdata',
                           alarm_data_delay_positive=30, alarm_data_delay_negative=10,
                           machine_image='Machine/MachineImage/test.png', is_apply=1)
     # 初始化加速度传感器
     Model2.objects.create(id=1, sensor_code="C2310020216", sensor_name='XM减速器-三相加速度', frequency=10,
                           sensor_port=1030, channel_number=9, command_code='01 03 A6 04 00 09 E6 85',
                           sensor_status=1, measurement='signal', time_out=5, receive_number=46,
-                          sensor_image='Sensor/SensorImage/test.png', operational_status=True, config_id=1)
+                          sensor_image='Sensor/SensorImage/test.png', operational_status=True, config_id=1, ruler='9H')
     Model3.objects.create(id=1, sensor_name="XM减速器-三相加速度", channel_name='X-轴速度有效值', overrun_times=3,
                           channel_field='AcceleratedSpeed_X', unit='mm/s', is_monitor=1, channel_id=1)
     Model3.objects.create(id=2, sensor_name="XM减速器-三相加速度", channel_name='Y-轴速度有效值', overrun_times=3,
@@ -63,6 +63,7 @@ class Migration(migrations.Migration):
                 ('receive_number', models.IntegerField(null=True)),
                 ('config_id', models.IntegerField(default=1, null=True)),
                 ('sensor_image', models.ImageField(null=True, upload_to='Sensor/')),
+                ('ruler', models.CharField(max_length=32, null=True)),
 
             ],
         ),
@@ -77,12 +78,13 @@ class Migration(migrations.Migration):
                 ('manager', models.CharField(max_length=32, null=True)),
                 ('machine_ip', models.CharField(max_length=32, null=True)),
                 ('machine_port', models.IntegerField(null=True)),
-                ('tool_number', models.IntegerField(null=True)),
+                # ('tool_number', models.IntegerField(null=True)),
                 ('database_name', models.CharField(max_length=32, null=True)),
                 ('alarm_data_delay_positive', models.IntegerField(null=True)),
                 ('alarm_data_delay_negative', models.IntegerField(null=True)),
                 ('is_apply', models.BooleanField(default=0)),
                 ('machine_image', models.ImageField(null=True, upload_to='MachineImage/')),  # 机床图片
+                ('detect_ident', models.IntegerField(null=True)),
             ],
         ),
         migrations.CreateModel(
