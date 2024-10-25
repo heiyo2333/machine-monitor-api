@@ -336,53 +336,53 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
     def monitorOn(self, request):
         id = self.request.query_params.get('id')
         machineStatus = methodConfig.models.componentConfig.objects.get(id=id)
-        machines = systemConfig.models.systemConfig.objects.filter(is_apply=1)
-        if not machines.exists():
-            response = {
-                'status': 500,
-                'message': '机床未应用'
-            }
-            return JsonResponse(response)
-
-        influxdb_name = machines.first().database_name
-        machine_ip = machines.first().machine_ip
-
-        connect_database(influxdb_name)
-        client = InfluxDBClient(host='localhost', port=8086, username='admin', password='admin',
-                                database=influxdb_name)
-        sensor_id = machineStatus.sensor_id
-        sensor = systemConfig.models.sensorConfig.objects.get(id=sensor_id)
-        channels = systemConfig.models.channelConfig.objects.filter(channel_id=sensor_id).order_by('id')
-        field_list = []
-
-        # 遍历所有符合条件的 channelConfig 对象，将其 field 字段加入 field_list
-        for H in channels:
-            field_list.append(H.channel_field)  # 将 field 拼接到 field_list 中
-
-        # detected_sensors = [
-        #     {
-        #         'sensor_id': sensor_id,
-        #         'sensor_port': sensor.sensor_port,  # 假设传感器的Modbus端口
-        #         'command_code': sensor.command_code,  # 这是一个示例的Modbus指令
-        #         'time_out': sensor.time_out,  # 5秒超时
-        #         'receive_number': sensor.receive_number,  # 预期接收46个字节
-        #         'measurement': sensor.measurement,
-        #         'field_list': field_list,
-        #         # 对应的字段
+        # machines = systemConfig.models.systemConfig.objects.filter(is_apply=1)
+        # if not machines.exists():
+        #     response = {
+        #         'status': 500,
+        #         'message': '机床未应用'
         #     }
-        # ]
-        t = threading.Thread(target=detect_sensor, args=(client, machine_ip,
-                                                     sensor_id,
-                                                     sensor.sensor_port,
-                                                     sensor.command_code,
-                                                     sensor.time_out,
-                                                     sensor.receive_number,
-                                                     sensor.measurement,
-                                                     field_list)).start()
+        #     return JsonResponse(response)
+        #
+        # influxdb_name = machines.first().database_name
+        # machine_ip = machines.first().machine_ip
+        #
+        # connect_database(influxdb_name)
+        # client = InfluxDBClient(host='localhost', port=8086, username='admin', password='admin',
+        #                         database=influxdb_name)
+        # sensor_id = machineStatus.sensor_id
+        # sensor = systemConfig.models.sensorConfig.objects.get(id=sensor_id)
+        # channels = systemConfig.models.channelConfig.objects.filter(channel_id=sensor_id).order_by('id')
+        # field_list = []
+        #
+        # # 遍历所有符合条件的 channelConfig 对象，将其 field 字段加入 field_list
+        # for H in channels:
+        #     field_list.append(H.channel_field)  # 将 field 拼接到 field_list 中
+        #
+        # # detected_sensors = [
+        # #     {
+        # #         'sensor_id': sensor_id,
+        # #         'sensor_port': sensor.sensor_port,  # 假设传感器的Modbus端口
+        # #         'command_code': sensor.command_code,  # 这是一个示例的Modbus指令
+        # #         'time_out': sensor.time_out,  # 5秒超时
+        # #         'receive_number': sensor.receive_number,  # 预期接收46个字节
+        # #         'measurement': sensor.measurement,
+        # #         'field_list': field_list,
+        # #         # 对应的字段
+        # #     }
+        # # ]
+        # t = threading.Thread(target=detect_sensor, args=(client, machine_ip,
+        #                                              sensor_id,
+        #                                              sensor.sensor_port,
+        #                                              sensor.command_code,
+        #                                              sensor.time_out,
+        #                                              sensor.receive_number,
+        #                                              sensor.measurement,
+        #                                              field_list)).start()
         # 执行监控算法
 
         machineStatus.monitor_status = True
-        machineStatus.ident =t.ident
+        # machineStatus.ident =t.ident
         machineStatus.save()
         response = {
             'status': 200,

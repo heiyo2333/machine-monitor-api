@@ -19,7 +19,7 @@ class ConfigAddSerializer(serializers.Serializer):
     manager = serializers.CharField(help_text="负责人", max_length=32)
     machine_ip = serializers.CharField(help_text="机床ip", max_length=32)
     machine_port = serializers.IntegerField(help_text="端口号")
-    tool_number = serializers.IntegerField(help_text="刀位数量")
+    # tool_number = serializers.IntegerField(help_text="刀位数量")
     database_name = serializers.CharField(help_text="时序数据库名称", max_length=32)
     alarm_data_delay_positive = serializers.IntegerField(help_text="正延时")
     alarm_data_delay_negative = serializers.IntegerField(help_text="负延时")
@@ -36,7 +36,7 @@ class ConfigUpdateSerializer(serializers.Serializer):
     manager = serializers.CharField(help_text="负责人", max_length=32)
     machine_ip = serializers.CharField(help_text="机床ip", max_length=32)
     machine_port = serializers.IntegerField(help_text="端口号")
-    tool_number = serializers.IntegerField(help_text="刀位数量")
+    # tool_number = serializers.IntegerField(help_text="刀位数量")
     database_name = serializers.CharField(help_text="时序数据库名称", max_length=32)
     alarm_data_delay_positive = serializers.IntegerField(help_text="正延时")
     alarm_data_delay_negative = serializers.IntegerField(help_text="负延时")
@@ -93,7 +93,7 @@ class ConfigInformationSerializer(serializers.Serializer):
     manager = serializers.CharField(label="负责人", max_length=32)
     machine_ip = serializers.CharField(label="机床ip", max_length=32)
     machine_port = serializers.IntegerField(label="端口号")
-    tool_number = serializers.IntegerField(label="刀位数量")
+    # tool_number = serializers.IntegerField(label="刀位数量")
     database_name = serializers.CharField(label="时序数据库名称", max_length=32)
     alarm_data_delay_positive = serializers.IntegerField(label="正延时")
     alarm_data_delay_negative = serializers.IntegerField(label="负延时")
@@ -143,6 +143,11 @@ class sensorAddserializer(serializers.Serializer):
     # machine_name = serializers.CharField(label="机床名称", max_length=32)
     # machine_code = serializers.CharField(label="机床编号", max_length=32)
     config_id = serializers.CharField(label="系统配置id", max_length=32)
+    time_out = serializers.IntegerField(label="超时时间")
+    receive_number = serializers.IntegerField(label="接收数据数量")
+    command_code = serializers.CharField(label="传感器操作指令", max_length=32)
+    ruler = serializers.CharField(label="规则", max_length=32)
+    sensor_port = serializers.IntegerField(label="传感器端口号")
 
     def save(self):
         sensor_code = self.validated_data['sensor_code']
@@ -177,6 +182,11 @@ class sensorUpdateserializer(serializers.Serializer):
     # machine_name = serializers.CharField(label="机床名称", max_length=32)
     # machine_code = serializers.CharField(label="机床编号", max_length=32)
     config_id = serializers.CharField(label="系统配置id", max_length=32)
+    time_out = serializers.IntegerField(label="超时时间")
+    receive_number = serializers.IntegerField(label="接收数据数量")
+    command_code = serializers.CharField(label="传感器操作指令", max_length=32)
+    ruler = serializers.CharField(label="规则", max_length=32)
+    sensor_port = serializers.IntegerField(label="传感器端口号")
 
     def save(self):
         sensor_code = self.validated_data['sensor_code']
