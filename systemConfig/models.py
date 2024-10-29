@@ -17,6 +17,7 @@ class systemConfig(models.Model):
     is_apply = models.BooleanField(default=0)  # 应用配置
     machine_image = models.ImageField(null=True, upload_to='Machine/MachineImage/')  #机床图片
     detect_ident = models.IntegerField(null=True)  # 传感器检测程序线程号
+    influx_clean_date = models.CharField(max_length=32, null=True)  # 时序数据库清理标志
 
 
 # 传感器配置
@@ -35,7 +36,7 @@ class sensorConfig(models.Model):
     sensor_image = models.ImageField(null=True, upload_to='Sensor/SensorImage/')  # 传感器图片
     sensor_port = models.IntegerField(null=True)  # 传感器端口号
     command_code = models.CharField(max_length=32, null=True)  # 传感器操作指令
-    config_id = models.CharField(max_length=32, null=True)
+    config_id = models.CharField(max_length=32, null=True)  # 外键
     ruler = models.CharField(max_length=32, null=True)  # 规则
 
 
@@ -49,6 +50,13 @@ class channelConfig(models.Model):
     channel_field = models.CharField(max_length=32, null=True)  # 对应字段
     is_monitor = models.BooleanField(default=False)  # 是否监控
     channel = models.ForeignKey(sensorConfig, db_constraint=True, on_delete=models.CASCADE)  # 外键
+    remark = models.CharField(max_length=32, null=True)  # 备注
+
+
+class influxDataConfig(models.Model):
+    sensor = models.ForeignKey(sensorConfig, db_constraint=True, on_delete=models.CASCADE)  # 外键
+    date = models.CharField(max_length=32, null=True)  # 日期
+    influx_file = models.FileField(upload_to='Sensor/SensorData/', null=True)
     remark = models.CharField(max_length=32, null=True)  # 备注
 
 

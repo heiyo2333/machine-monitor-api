@@ -334,8 +334,8 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['get'])
     def monitorOn(self, request):
-        id = self.request.query_params.get('id')
-        machineStatus = methodConfig.models.componentConfig.objects.get(id=id)
+        machine_id = self.request.query_params.get('id')
+        machine_status = methodConfig.models.componentConfig.objects.get(id=machine_id)
         # machines = systemConfig.models.systemConfig.objects.filter(is_apply=1)
         # if not machines.exists():
         #     response = {
@@ -381,9 +381,9 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
         #                                              field_list)).start()
         # 执行监控算法
 
-        machineStatus.monitor_status = True
+        machine_status.monitor_status = True
         # machineStatus.ident =t.ident
-        machineStatus.save()
+        machine_status.save()
         response = {
             'status': 200,
             'message': '开始监控成功'
@@ -402,8 +402,8 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['get'])
     def monitorOff(self, request):
-        id = self.request.query_params.get('id')
-        machineStatus = methodConfig.models.componentConfig.objects.get(id=id)
+        machine_id = self.request.query_params.get('id')
+        machine_status = methodConfig.models.componentConfig.objects.get(id=machine_id)
         machines = systemConfig.models.systemConfig.objects.filter(is_apply=1)
         if not machines.exists():
             response = {
@@ -411,13 +411,9 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
                 'message': '机床未应用'
             }
             return JsonResponse(response)
-        sensor_id = machineStatus.sensor_id
-        sensor = systemConfig.models.sensorConfig.objects.get(id=sensor_id)
-        # 结束监控算法
-        sensor.thread_flag = 0
-        sensor.save()
-        machineStatus.monitor_status = False
-        machineStatus.save()
+
+        machine_status.monitor_status = False
+        machine_status.save()
         response = {
             'status': 200,
             'message': '结束监控成功'
@@ -553,12 +549,14 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['get'])
     def sensorData(self, request):
         id = self.request.query_params.get('id')
-        channels = methodConfig.models.algorithmChannel.objects.filter(algorithm_channel_id=id)
+        channels_data = methodConfig.models.componentConfig.objects.get(id=id).algorithm_channel_data
+        channels = json.loads(channels_data)
         result_list = []
         for i in channels:
-            channel_id = i.channel_id
-            sensor_id = i.sensor_id
+            channel_id = i
+            print('channel_id', channel_id)
             channel = systemConfig.models.channelConfig.objects.get(id=channel_id)
+            sensor_id = channel.channel_id
             sensor = systemConfig.models.sensorConfig.objects.get(id=sensor_id)
             channel_name = channel.channel_name
             sensor_name = sensor.sensor_name
@@ -572,7 +570,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
             })
         response_list = {
             'list': result_list,
-            'total': channels.count()
+            'total': len(channels)
         }
         response = {
             'data': response_list,

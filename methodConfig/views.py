@@ -1,9 +1,14 @@
 import json
 import os
 import socket
+import threading
 from datetime import datetime, timedelta
 import re
+from io import BytesIO
+
+import pandas as pd
 import requests
+from dateutil import parser
 from django.core.files.base import ContentFile
 from django.db.models import Max
 from django.http import JsonResponse, HttpResponse
@@ -381,6 +386,8 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         total = component.count()
         result_list = []
         for x in component:
+            sensor = systemConfig.models.sensorConfig.objects.get(id=x.sensor_id)
+            sensor_name = sensor.sensor_name
             result_list.append(
                 {
                     'id': x.id,
@@ -391,6 +398,8 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
                     'component_code': x.component_code,
                     'algorithm_id': x.algorithm_id,
                     'algorithm_name': x.algorithm_name,
+                    'sensor_id': x.sensor_id,
+                    'sensor_name': sensor_name,
                     'algorithm_channel_data': x.algorithm_channel_data,
                     'remark': x.remark,
                 }
@@ -759,7 +768,6 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['get'])
     def newestSignal(self, request):
         config_id = self.request.query_params.get('config_id')
-        print(config_id)
         component_id = self.request.query_params.get('component_id')
         sensor_id = self.request.query_params.get('sensor_id')
         channel_id = self.request.query_params.get('channel_id')
@@ -770,15 +778,44 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         component = models.componentConfig.objects.get(id=component_id)
 
         database_name = system.database_name
+        client = InfluxDBClient(host='localhost', port=8086, username='admin', password='admin',
+                                database=database_name)
+        today = datetime.utcnow().date()
+        today_str = today.strftime('%Y-%m-%d')
+        if system.influx_clean_date is None:
+            influx_clean_flag = 1
+        else:
+            if system.influx_clean_date < today_str:
+                influx_clean_flag = 1
+            else:
+                influx_clean_flag = 0
+        if influx_clean_flag == 1:
+            system.influx_clean_date = today_str
+            system.save()
+            threading.Thread(target=influxDataToCsv, args=(client,today_str)).start()
+            # influxDataToCsv(client)
         measurement = sensor.measurement
         unit = channel.unit
+
         if sensor.sensor_status and channel.is_monitor:
-            client = InfluxDBClient(host='localhost', port=8086, username='admin', password='admin',
-                                    database=database_name)
             query = f'SELECT * FROM "{measurement}" ORDER BY time DESC LIMIT 1'
             result = client.query(query)
             client.close()
             points = list(result.get_points())
+            # 检查points是否为空
+            if not points:
+                data = {
+                    'xAxisName': '时间',
+                    'xData': "",  # 横坐标
+                    'yAxisName': unit,
+                    'yData': "",  # 纵坐标
+                }
+                response = {
+                    'data': data,
+                    'status': 200,
+                    'message': '最新信号获取成功！',
+                }
+                return JsonResponse(response)
             point = points[0]
             # 解析时间字符串
             field_time = str(
@@ -807,3 +844,64 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
             'message': '最新信号获取成功！',
         }
         return JsonResponse(response)
+
+
+def influxDataToCsv(client, today_str):
+    sensors = systemConfig.models.sensorConfig.objects.filter(sensor_status=True)
+    # 当前日期
+    today = datetime.utcnow().date()
+    today_str = today.strftime('%Y-%m-%d')
+    for sensor in sensors:
+        measurement = sensor.measurement
+        print('measurement', measurement)
+        query = f'SELECT * FROM "{measurement}"'
+        result = client.query(query)
+        points = list(result.get_points())
+
+        # max_date_str_result = systemConfig.models.influxDataConfig.objects.filter(sensor_id=sensor.id).aggregate(Max('date'))
+        # max_date_str = max_date_str_result['date__max']
+        #
+        # # 判断是否已经删除过前日的数据
+        # if max_date_str is not None and max_date_str == today_str:
+        #     continue
+
+        # 存储要删除的数据
+        data_to_delete = {}
+
+        # 创建CSV数据
+        for point in points:
+            timestamp = parser.parse(point.get('time'))
+            # timestamp = datetime.strptime(point.get('time'), '%Y-%m-%dT%H:%M:%S.%fZ')
+            if timestamp.date() < today:  # 今日之前的数据
+                date_str = timestamp.date().strftime('%Y-%m-%d')
+                if date_str not in data_to_delete:
+                    data_to_delete[date_str] = []
+                data_to_delete[date_str].append(point)
+
+        # 将数据写入CSV文件
+        for date_str, data in data_to_delete.items():
+            if data:
+                df = pd.DataFrame(data)
+                csv_filename = f'{measurement}_{date_str}.csv'
+                csv_bytes_io = BytesIO()
+                df.to_csv(csv_bytes_io, index=False)
+                csv_bytes_io.seek(0)  # 重置指针到文件开头
+
+                influx_data = systemConfig.models.influxDataConfig.objects.create(date=today_str, sensor_id=sensor.id)
+                influx_data.influx_file.save(csv_filename, csv_bytes_io)
+
+                # 删除今日之前的数据
+                delete_query = f'DELETE FROM "{measurement}" WHERE time < \'{today_str}T00:00:00Z\''
+                print(f'Delete query: {delete_query}')
+
+                try:
+                    client.query(delete_query)
+                    print(f'{measurement}Successfully deleted data before {today_str}')
+                except Exception as e:
+                    print(f'Error deleting data: {e}')
+                # # 删除今日之前的数据
+                # for point in data:
+                #     delete_query = f'DELETE FROM "{measurement}" WHERE time = \'{point.get("time")}\''
+                #     client.query(delete_query)
+
+                csv_bytes_io.close()  # 关闭 BytesIO
