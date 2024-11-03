@@ -308,7 +308,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
                 'database_name': configuration1.database_name,
                 'alarm_data_delay_positive': configuration1.alarm_data_delay_positive,
                 'alarm_data_delay_negative': configuration1.alarm_data_delay_negative,
-                'machine_image': f"http://{get_local_ip()}:8000" + configuration1.machine_image.url if configuration1.machine_image else None
+                'machine_image': f"http://127.0.0.1:8000" + configuration1.machine_image.url if configuration1.machine_image else None
             }
             print('ip：', get_local_ip())
             response = {
@@ -343,7 +343,6 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         pageSize = int(self.request.query_params.get('pageSize'))
         current = int(self.request.query_params.get('current'))
         sensor_code = self.request.query_params.get('sensor_code')
-        print('sensor_code', sensor_code)
         pageSize = int(pageSize)
         current = int(current)
         config_id = models.systemConfig.objects.get(is_apply=1).id

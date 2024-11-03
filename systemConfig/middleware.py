@@ -6,12 +6,41 @@ import requests
 import subprocess
 import time
 
+test_sensors_running_flag = False
+# 先检查是否已有 test_sensors.exe 在运行
+def start_test_sensors():
+    try:
+
+        if not is_program_running("test_sensors.exe") :
+            # 后台启动 test_sensors.exe
+            # subprocess.Popen(["D:\\machine-monitor-api\\systemConfig\\test_sensors.exe"])
+            # 命令窗启动 test_sensors.exe
+            # subprocess.Popen(["cmd", "/c", "start", "cmd", "/k", "D:\\machine-monitor-api\\systemConfig\\test_sensors.exe"])
+            subprocess.Popen(["start", "cmd", "/k", "D:\\machine-monitor-api\\systemConfig\\test_sensors.exe"],
+                             shell=True)
+            print("test_sensors.exe is starting...")
+        else:
+            print("test_sensors.exe is already running.")
+    except Exception as e:
+        print(f"Failed to start test_sensors.exe: {e}")
+
+
+# 检查程序是否在运行
+def is_program_running(program_name):
+    try:
+        output = subprocess.check_output('tasklist', shell=True, text=True)
+        return program_name in output
+    except subprocess.CalledProcessError as e:
+        print(f"Error checking running programs: {e}")
+        return False
+
 
 def start_influxdb():
     try:
         # 尝试启动 InfluxDB
         subprocess.run(
-            ["cmd", "/c", "start", "/min", "cmd", "/c", "D:\\influx\\influxdb\\influxdb-1.8.10-1\\influxd -config D:\\influx\\influxdb\\influxdb-1.8.10-1\\influxdb.conf"],
+            ["cmd", "/c", "start", "/min", "cmd", "/c",
+             "D:\\influx\\influxdb\\influxdb-1.8.10-1\\influxd -config D:\\influx\\influxdb\\influxdb-1.8.10-1\\influxdb.conf"],
             check=True
         )
         print("InfluxDB is starting...")
@@ -55,3 +84,9 @@ class ConfigMiddleware(MiddlewareMixin):
         except Exception as e:
             print(f"An error occurred: {e}")
 
+        # 检查 test_sensors.exe 是否在运行
+        if not is_program_running("test_sensors.exe"):
+            print("test_sensors.exe is not running. Starting it now...")
+            start_test_sensors()
+        else:
+            print("test_sensors.exe is already running.")
