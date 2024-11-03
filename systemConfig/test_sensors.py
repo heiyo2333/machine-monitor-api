@@ -87,6 +87,7 @@ def sensor_detect(client, sensor_list):
             client.write_points(point)
             # 按照传感器频率延迟对应的时间
             time.sleep(1 / sensor_list['frequency'])
+            error_time = 0
         # 传感器数据解析错误
         except struct.error as e:
             error_time += 1
@@ -290,3 +291,4 @@ if __name__ == '__main__':
                 start_sensor_threads(detect_list)
 
     thread_flag_clean()
+    os._exit(0)
