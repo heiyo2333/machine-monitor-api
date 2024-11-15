@@ -8,6 +8,8 @@ Date: 2024/08/31
 import subprocess
 import struct
 import os
+import sys
+
 import django
 import requests
 from influxdb import InfluxDBClient
@@ -15,13 +17,19 @@ import socket
 import threading
 import time
 
+
+# 添加项目路径到 sys.path
+project_path = r'D:\machine-monitor-api'
+sys.path.append(project_path)
+
 # 设置 Django 环境变量
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'MachineMonitorApi.settings')  # 请将 'your_project_name' 替换为你的项目名
 django.setup()
 
+lock = threading.Lock()
+
 import systemConfig
 from systemConfig import models
-lock = threading.Lock()
 
 def thread_flag_clean():
     sensors = systemConfig.models.sensorConfig.objects.all()
@@ -194,7 +202,8 @@ def start_influxdb():
         # 尝试启动 InfluxDB
         subprocess.run(
             ["cmd", "/c", "start", "/min", "cmd", "/c",
-             "D:\\influx\\influxdb\\influxdb-1.8.10-1\\influxd -config D:\\influx\\influxdb\\influxdb-1.8.10-1\\influxdb.conf"],
+             "D:\\influx\\influxdb\\influxdb-1.8.10-1\\influxd -config "
+             "D:\\influx\\influxdb\\influxdb-1.8.10-1\\influxdb.conf"],
             check=True
         )
         print("InfluxDB is starting...")
