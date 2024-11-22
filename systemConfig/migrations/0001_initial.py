@@ -20,23 +20,23 @@ def create_initial_data(apps, schema_editor):
                           sensor_status=1, measurement='signal', time_out=5, receive_number=46,
                           sensor_image='Sensor/SensorImage/test.png', operational_status=True, config_id=1, ruler='9H')
     Model3.objects.create(id=1, sensor_name="XM减速器-三相加速度", channel_name='X-轴速度有效值', overrun_times=3,
-                          channel_field='AcceleratedSpeed_X', unit='mm/s', is_monitor=1, channel_id=1)
+                          channel_field='AcceleratedSpeed_X', unit='mm/s', is_monitor=1,channel_threshold=10,channel_status=0, channel_id=1)
     Model3.objects.create(id=2, sensor_name="XM减速器-三相加速度", channel_name='Y-轴速度有效值', overrun_times=3,
-                          channel_field='AcceleratedSpeed_Y', unit='mm/s', is_monitor=1, channel_id=1)
+                          channel_field='AcceleratedSpeed_Y', unit='mm/s', is_monitor=1, channel_threshold=10,channel_status=0,channel_id=1)
     Model3.objects.create(id=3, sensor_name="XM减速器-三相加速度", channel_name='Z-轴速度有效值', overrun_times=3,
-                          channel_field='AcceleratedSpeed_Z', unit='mm/s', is_monitor=1, channel_id=1)
+                          channel_field='AcceleratedSpeed_Z', unit='mm/s', is_monitor=1,channel_threshold=10,channel_status=0, channel_id=1)
     Model3.objects.create(id=4, sensor_name="XM减速器-三相加速度", channel_name='X-轴加速度标准差值', overrun_times=3,
-                          channel_field='AcceleratedSpeed_X', unit='m/s²', is_monitor=1, channel_id=1)
+                          channel_field='AcceleratedSpeed_X', unit='m/s²', is_monitor=1, channel_threshold=10,channel_status=0,channel_id=1)
     Model3.objects.create(id=5, sensor_name="XM减速器-三相加速度", channel_name='Y-轴加速度标准差值', overrun_times=3,
-                          channel_field='AcceleratedSpeed_Y', unit='m/s²', is_monitor=1, channel_id=1)
+                          channel_field='AcceleratedSpeed_Y', unit='m/s²', is_monitor=1,channel_threshold=10,channel_status=0, channel_id=1)
     Model3.objects.create(id=6, sensor_name="XM减速器-三相加速度", channel_name='Z-轴加速度标准差值', overrun_times=3,
-                          channel_field='AcceleratedSpeed_Z', unit='m/s²', is_monitor=1, channel_id=1)
+                          channel_field='AcceleratedSpeed_Z', unit='m/s²', is_monitor=1,channel_threshold=10,channel_status=0, channel_id=1)
     Model3.objects.create(id=7, sensor_name="XM减速器-三相加速度", channel_name='X-轴加速度均方根值', overrun_times=3,
-                          channel_field='AcceleratedSpeed_X', unit='m/s²', is_monitor=1, channel_id=1)
+                          channel_field='AcceleratedSpeed_X', unit='m/s²', is_monitor=1,channel_threshold=10,channel_status=0, channel_id=1)
     Model3.objects.create(id=8, sensor_name="XM减速器-三相加速度", channel_name='Y-轴加速度均方根值', overrun_times=3,
-                          channel_field='AcceleratedSpeed_Y', unit='m/s²', is_monitor=1, channel_id=1)
+                          channel_field='AcceleratedSpeed_Y', unit='m/s²', is_monitor=1,channel_threshold=10,channel_status=0, channel_id=1)
     Model3.objects.create(id=9, sensor_name="XM减速器-三相加速度", channel_name='Z-轴加速度均方根值', overrun_times=3,
-                          channel_field='AcceleratedSpeed_Z', unit='m/s²', is_monitor=1, channel_id=1)
+                          channel_field='AcceleratedSpeed_Z', unit='m/s²', is_monitor=1,channel_threshold=10,channel_status=0, channel_id=1)
 
 
 class Migration(migrations.Migration):
@@ -103,9 +103,11 @@ class Migration(migrations.Migration):
                 ('sensor_code', models.CharField(max_length=32, null=True)),
                 ('sensor_name', models.CharField(max_length=32, null=True)),
                 ('channel_name', models.CharField(max_length=32, null=True)),
+                ('channel_threshold', models.FloatField(null=True)),
                 ('overrun_times', models.IntegerField(null=True)),
                 ('channel_field', models.CharField(max_length=32, null=True)),
                 ('is_monitor', models.BooleanField(default=False)),
+                ('channel_status', models.IntegerField(default=0)),
                 ('unit', models.CharField(max_length=32, null=True)),
                 ('remark', models.CharField(max_length=32, null=True)),
                 ('channel',

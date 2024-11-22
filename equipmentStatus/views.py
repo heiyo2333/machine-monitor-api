@@ -1,8 +1,10 @@
 import json
+import os
 import random
 import time
 import struct
 import numpy as np
+import pandas as pd
 from django.db.models import Q, Max
 from django.http import JsonResponse
 from django.urls import reverse
@@ -274,7 +276,6 @@ def connect_database(database_name):
     #         t.start()
     #         threads.append(t)
 
-
 class EquipmentStatusViewSet(viewsets.GenericViewSet):
     authentication_classes = (BasicAuthentication,)
     parser_classes = (MultiPartParser, FormParser)
@@ -538,39 +539,51 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
 
     # 传感器通道信息
     @swagger_auto_schema(
-        operation_summary='部件传感器信息',
+        operation_summary='传感器通道信息',
         # 获取参数
         manual_parameters=[
-            openapi.Parameter('id', openapi.IN_QUERY, description='部件id', type=openapi.TYPE_INTEGER,
+            openapi.Parameter('id', openapi.IN_QUERY, description='配置id', type=openapi.TYPE_INTEGER,
                               required=True), ],
         responses={200: openapi.Response('successful', serializer.sensorDataSerializer)},
         tags=["equipment"],
     )
     @action(detail=False, methods=['get'])
     def sensorData(self, request):
-        id = self.request.query_params.get('id')
-        channels_data = methodConfig.models.componentConfig.objects.get(id=id).algorithm_channel_data
-        channels = json.loads(channels_data)
+        config_id = self.request.query_params.get('id')
+        channels_data1 = methodConfig.models.componentConfig.objects.filter(config_id=config_id)
+        unique_numbers = set()
+        for a in channels_data1:
+            # 去掉字符串两端的方括号，并按逗号分割字符串
+            numbers_str = a.algorithm_channel_data[1:-1].split(',')
+            # 将字符串转换为整数并添加到集合中
+            for num_str in numbers_str:
+                unique_numbers.add(int(num_str))
+        channels_1 = list(unique_numbers)
+        channels_data2 = systemConfig.models.channelConfig.objects.filter(id__in=channels_1,channel_status__in =[1,2]).order_by('-overrun_times')
         result_list = []
-        for i in channels:
-            channel_id = i
-            print('channel_id', channel_id)
+        for i in channels_data2:
+            channel_id = i.id
             channel = systemConfig.models.channelConfig.objects.get(id=channel_id)
             sensor_id = channel.channel_id
             sensor = systemConfig.models.sensorConfig.objects.get(id=sensor_id)
             channel_name = channel.channel_name
             sensor_name = sensor.sensor_name
+            channel_threshold = channel.channel_threshold
+            overrun_times = channel.overrun_times
+            channel_status = channel.channel_status
             result_list.append({
                 'id': channel_id,
                 'sensor_id': sensor_id,
                 'sensor_name': sensor_name,
                 'channel_id': channel_id,
                 'channel_name': channel_name,
-                'status': sensor.sensor_status,
+                'channel_threshold': channel_threshold,
+                'overrun_times': overrun_times,
+                'channel_status': channel_status,
             })
         response_list = {
             'list': result_list,
-            'total': len(channels)
+            'total': len(channels_data2)
         }
         response = {
             'data': response_list,
@@ -621,6 +634,79 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
         }
         return JsonResponse(response)
 
+    # 机床加工时间填写
+    @swagger_auto_schema(
+        operation_summary='机床加工时间填写',
+        request_body=serializer.addThermalDiagramSerializer,
+        responses={200: '机床加工时间填写成功'},
+        tags=["equipment"],
+    )
+    @action(detail=False, methods=['post'])
+    def addThermalDiagram(self, request):
+        config_id = systemConfig.models.systemConfig.objects.get(is_apply=1).id  # 机床系统配置的id
+        machine = systemConfig.models.systemConfig.objects.get(id=config_id)
+        today_date = datetime.utcnow().date()
+        sensor_query = Q(config_id=config_id) & Q(sensor_code='sp_current')
+        sensor_id = systemConfig.models.sensorConfig.objects.get(sensor_query).id
+        for i in range(20):
+            working_hours = 0
+            front_date = today_date - timedelta(days=i)
+            date_str = front_date.strftime('%Y-%m-%d')
+            machine_query = Q(config_id=config_id) & Q(machine_process_date__exact=date_str)
+            if models.thermalDiagram.objects.filter(machine_query).exists():
+                # 该日期的加工时间数据已经有了-->不做操作
+                continue
+            else:
+                # 该日期的加工时间数据还没有-->寻找数据
+                query = Q(date__exact=date_str) & Q(sensor_id=sensor_id)
+                # print(query)
+                if systemConfig.models.influxDataConfig.objects.filter(query).exists():
+                    influx_object = systemConfig.models.influxDataConfig.objects.get(query)
+                    file_path = influx_object.influx_file.path
+                    if os.path.exists(file_path):
+                        data = pd.read_csv(file_path)
+                        # 转换 'time' 列为 datetime 格式
+                        data['time'] = pd.to_datetime(data['time'])
+                        # 求平方之和再开方
+                        result = np.sqrt(data['Current_U'] ** 2 + data['Current_V'] ** 2 + data['Current_W'] ** 2)
+                        # 如果需要将结果添加为新列
+                        data['Current_Magnitude'] = result
+                        # print(data['Current_Magnitude'])
+
+                        # 标记分段（时间间隔大于3秒的作为新段）
+                        time_diff = data['time'].diff()
+                        gap_threshold = timedelta(seconds=3)
+                        data['segment'] = (time_diff > gap_threshold).cumsum()
+
+                        # 筛选 Current_Magnitude > 3 的数据
+                        filtered_data = data[data['Current_Magnitude'] > 3].copy()
+
+                        # # 计算每段的时间差
+                        # filtered_data['time_diff'] = filtered_data['time'].diff()
+                        # filtered_data.loc[
+                        #     filtered_data['segment'] != filtered_data['segment'].shift(), 'time_diff'] = pd.NaT
+
+                        # 修正代码以避免 SettingWithCopyWarning
+                        filtered_data.loc[:, 'time_diff'] = filtered_data['time'].diff()
+                        filtered_data.loc[
+                            filtered_data['segment'] != filtered_data['segment'].shift(), 'time_diff'] = pd.NaT
+
+                        # 计算总时长（秒数）
+                        total_duration = filtered_data['time_diff'].dt.total_seconds().sum()
+
+                        # 输出总时长
+                        print(f"总有效时长为 {total_duration / 3600:.2f} H")
+                        models.thermalDiagram.objects.create(config_id=config_id,
+                                                             machine_code=machine.machine_code,
+                                                             machine_name=machine.machine_name,
+                                                             machine_process_date=date_str,
+                                                             machine_running_time=round(total_duration / 3600, 2))
+        response = {
+            'status': 200,
+            'message': '机床加工时间填写成功'
+        }
+        return JsonResponse(response)
+
     # 加工时间热力图
     @swagger_auto_schema(
         operation_summary='加工时间热力图',
@@ -644,9 +730,13 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
         days_of_week = set()
 
         # 遍历数据，填充weeks, days_of_week和heatmap_data
+        week_dictionary = {0: "周一", 1: "周二", 2: "周三", 3: "周四", 4: "周五", 5: "周六", 6: "周日"}
         for entry in data:
             week = entry.machine_process_date.isocalendar()[1]  # 获取ISO周数
-            day_of_week = entry.machine_process_date.weekday()  # 获取星期（0=周一，6=周日）
+            day_of_week = entry.machine_process_date.weekday()  # 获取星期（0=周一，6=周日)
+            # day_of_week = week_dictionary[entry.machine_process_date.weekday()]  # 获取星期（0=周一，6=周日）
+            today = datetime.utcnow().date()
+            today_str = today.strftime('%Y-%m-%d')
             weeks.add(week)
             days_of_week.add(day_of_week)
             key = (week, day_of_week)
@@ -783,32 +873,6 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
         }
         return JsonResponse(response)
 
-    # 机床加工时间填写
-    @swagger_auto_schema(
-        operation_summary='机床加工时间填写',
-        request_body=serializer.addThermalDiagramSerializer,
-        responses={200: '机床加工时间填写成功'},
-        tags=["equipment"],
-    )
-    @action(detail=False, methods=['post'])
-    def addThermalDiagram(self, request):
-        config_id = self.request.data.get('config_id')  # 机床系统配置的id
-        machine_process_date = self.request.data.get('machine_process_date')  # 机床工作日期
-        machine_running_time = self.request.data.get('machine_running_time')  # 机床加工时间
-
-        machine = systemConfig.models.systemConfig.objects.get(id=config_id)
-
-        new_thermalDiagram = models.thermalDiagram.objects.create(config_id=config_id,
-                                                                  machine_code=machine.machine_code,
-                                                                  machine_name=machine.machine_name,
-                                                                  machine_process_date=machine_process_date,
-                                                                  machine_running_time=machine_running_time, )
-        response = {
-            'id': new_thermalDiagram.id,
-            'status': 200,
-            'message': '机床加工时间填写成功'
-        }
-        return JsonResponse(response)
 
     # 机床参数查询
     @swagger_auto_schema(
@@ -1375,4 +1439,31 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
                 'status': 500,
                 'message': '未找到该机床信息'
             }
+        return JsonResponse(response)
+
+
+# 部件监控接口
+    @swagger_auto_schema(
+        operation_summary='部件监控',
+        # 获取参数
+        manual_parameters=[
+            openapi.Parameter('config_id', openapi.IN_QUERY, description='配置id', type=openapi.TYPE_INTEGER,
+                              required=True), ],
+        responses={200: openapi.Response('successful')},
+        tags=["equipment"],
+    )
+    @action(detail=False, methods=['get'])
+    def equipmentMonitor(self, request):
+        config_id = self.request.query_params.get('config_id')
+
+        components = methodConfig.models.componentConfig.objects.filter(config_id=config_id,monitor_status=True)
+
+
+
+
+
+        response = {
+            'status': 200,
+            'message': '部件监控成功'
+        }
         return JsonResponse(response)
