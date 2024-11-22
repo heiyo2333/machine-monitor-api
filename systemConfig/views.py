@@ -445,6 +445,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             ruler=ruler,
         )
 
+        print(sensor_image_path)
         # 从URL下载文件内容
         response = requests.get(sensor_image_path)
         file_content = response.content
@@ -458,6 +459,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         for m in range(1, int(channel_number) + 1):
             models.channelConfig.objects.create(
                 sensor_name=h.sensor_name,
+                sensor_code=h.sensor_code,
                 channel_id=h.id
             )
         response = {
@@ -663,14 +665,14 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         id = self.request.data.get('id')
         if models.channelConfig.objects.filter(id=id).exists():
             channel_name = self.request.data.get('channel_name')
-            overrun_times = self.request.data.get('overrun_times')
+            channel_threshold = self.request.data.get('channel_threshold')
             channel_field = self.request.data.get('channel_field')
             remark = self.request.data.get('remark')
             unit = self.request.data.get('unit')
 
             configuration = models.channelConfig.objects.filter(id=id)
             configuration.update(channel_name=channel_name,
-                                 overrun_times=overrun_times,
+                                 channel_threshold=channel_threshold,
                                  channel_field=channel_field,
                                  remark=remark,
                                  unit=unit
@@ -715,7 +717,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
                     'sensor_name': channel.sensor_name,
                     'channel_name': channel.channel_name,
                     'overrun_times': channel.overrun_times,
-                    'channel_field': channel.channel_field,
+                    'channel_threshold': channel.channel_threshold,
                     'is_monitor': channel.is_monitor,
                     'unit': channel.unit,
                     'remark': channel.remark,

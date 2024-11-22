@@ -47,8 +47,8 @@ class thermalDiagramSerializer(serializers.Serializer):
 # 机床加工热力图填写
 class addThermalDiagramSerializer(serializers.Serializer):
     config_id = serializers.IntegerField(help_text="配置id")
-    machine_process_date = serializers.CharField(help_text="机床工作日期", max_length=32)  # 机床工作日期
-    machine_running_time = serializers.CharField(help_text="机床加工时间", max_length=32)  # 机床加工时间
+    # machine_process_date = serializers.CharField(help_text="机床工作日期", max_length=32)  # 机床工作日期
+    # machine_running_time = serializers.CharField(help_text="机床加工时间", max_length=32)  # 机床加工时间
 
 
 # 部件树
@@ -71,6 +71,9 @@ class sensorDataSerializer(serializers.Serializer):
     sensor_name = serializers.CharField(help_text="传感器名称", max_length=32)
     channel_id = serializers.IntegerField(help_text="通道id")
     channel_name = serializers.CharField(help_text="通道名称", max_length=32)
+    channel_threshold = serializers.FloatField(help_text="通道阈值")
+    overrun_times = serializers.IntegerField(help_text="超限次数")
+    channel_status = serializers.IntegerField(help_text="通道状态")
     status = serializers.BooleanField(help_text="传感器状态")
 
 
