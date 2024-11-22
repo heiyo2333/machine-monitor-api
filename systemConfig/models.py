@@ -42,8 +42,6 @@ class sensorConfig(models.Model):
 
 # 通道配置
 class channelConfig(models.Model):
-    sensor_name = models.CharField(max_length=32, null=True)  # 传感器名称
-    sensor_code = models.CharField(max_length=32, null=True)  # 传感器名称
     channel_name = models.CharField(null=True, max_length=32)  # 通道名称
     channel_threshold = models.FloatField(null=True) # 通道阈值
     overrun_times = models.IntegerField(null=True)  # 超限次数
@@ -51,7 +49,7 @@ class channelConfig(models.Model):
     channel_field = models.CharField(max_length=32, null=True)  # 对应字段
     is_monitor = models.BooleanField(default=False)  # 是否监控
     channel_status = models.IntegerField(default=0)  # 通道状态 0：正常（绿色）1：预警（黄色）2：异常（红色）
-    channel = models.ForeignKey(sensorConfig, db_constraint=True, on_delete=models.CASCADE)  # 外键
+    sensor = models.ForeignKey(sensorConfig, db_constraint=True, on_delete=models.CASCADE)  # 外键
     remark = models.CharField(max_length=32, null=True)  # 备注
 
 

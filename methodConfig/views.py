@@ -1,3 +1,4 @@
+import ast
 import json
 import os
 import socket
@@ -10,7 +11,7 @@ import pandas as pd
 import requests
 from dateutil import parser
 from django.core.files.base import ContentFile
-from django.db.models import Max
+from django.db.models import Max, Q
 from django.http import JsonResponse, HttpResponse
 from django.utils.http import urlquote
 from drf_yasg.utils import swagger_auto_schema
@@ -116,6 +117,59 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         }
         return JsonResponse(response)
 
+    # 部件配置-算法输入通道
+    @swagger_auto_schema(
+        operation_summary='算法配置-算法输入通道多级下拉',
+        # 获取参数
+        manual_parameters=[
+            openapi.Parameter('id', openapi.IN_QUERY, description='系统配置id', type=openapi.TYPE_INTEGER,
+                              required=True),
+        ],
+        responses={200: openapi.Response('successful')},
+        tags=["algorithm"]
+    )
+    @action(detail=False, methods=['get'])
+    def algorithmChannelSelect(self, request):
+        config_id = self.request.query_params.get("id")
+        # component_query = Q(component_status=True) & Q(config_id=config_id)
+        components = models.componentConfig.objects.filter(component_status=True, config_id=config_id)
+        request_list = []
+        for component in components:
+            component_list = {
+                'value': component.id,
+                'label': component.component_name,
+                'children': []
+            }
+            component_sensors = models.componentSensor.objects.filter(component_id=component.id)
+            for component_sensor in component_sensors:
+                sensor_id = component_sensor.sensor_id
+                sensor_name = systemConfig.models.sensorConfig.objects.get(id=sensor_id).sensor_name
+                child_sensor = {
+                    'value': sensor_id,
+                    'label': sensor_name,
+                    'children': []
+                }
+                component_list['children'].append(child_sensor)
+                channels = systemConfig.models.channelConfig.objects.filter(sensor=sensor_id)
+                for channel in channels:
+                    child_channel = {
+                        'value': channel.id,
+                        'label': channel.channel_name,
+                    }
+                    child_sensor['children'].append(child_channel)
+            request_list.append(component_list)
+
+        response_list = {
+            'list': request_list,
+            'total': components.count(),
+        }
+        response = {
+            'data': response_list,
+            'message': 'Successful',
+            'status': 200,
+        }
+        return JsonResponse(response)
+
     # 算法配置-显示
     @swagger_auto_schema(
         operation_summary='算法配置-显示',
@@ -135,23 +189,56 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         current = int(self.request.query_params.get('current'))
         first = (current - 1) * pageSize
         last = current * pageSize
-        method = self.get_queryset()
-        method_config_all = method[first:last]
-        total = method.count()
-        result_list = []
+        algorithms = models.algorithmConfig.objects.all()[first:last]
+        total = algorithms.count()
+
         ip_address = f"http://{get_local_ip()}:8000"
-        for x in method_config_all:
-            result_list.append(
-                {
-                    'id': x.id,
-                    'algorithm_code': x.algorithm_code,
-                    'algorithm_name': x.algorithm_name,
-                    'algorithm_channel_number': x.algorithm_channel_number,
-                    'remark': x.remark,
-                    'algorithm_file': ip_address + x.algorithm_file.url,
-                    # 'algorithm_file': os.path.basename(x.algorithm_file.name),
+
+        # 通道信息列表：algorithm_channels_list
+        algorithm_channels_list = []
+        for algorithm in algorithms:
+            algorithm_channels = models.algorithmChannel.objects.filter(algorithm_id=algorithm.id)
+            algorithm_list = {
+                'value': algorithm.id,
+                'label': algorithm.algorithm_name,
+                'children': []
+            }
+            for algorithm_channel in algorithm_channels:
+                channel = systemConfig.models.channelConfig.objects.get(id=algorithm_channel.channel_id)
+                sensor = systemConfig.models.sensorConfig.objects.get(id=channel.sensor_id)
+                component_sensor = models.componentSensor.objects.get(sensor=sensor.id)
+                component_list = {
+                    'value': component_sensor.component.id,
+                    'label': component_sensor.component.component_name,
+                    'children': []
                 }
-            )
+                sensor_list = {
+                    'value': sensor.id,
+                    'label': sensor.sensor_name,
+                    'children': []
+                }
+                channel_list = {
+                    'value': channel.id,
+                    'label': channel.channel_name,
+                }
+                sensor_list['children'].append(channel_list)
+                component_list['children'].append(sensor_list)
+                algorithm_list['children'].append(component_list)
+            algorithm_channels_list.append(algorithm_list)
+        result_list  = []
+
+        result_list.append(
+            {
+                'id': algorithm.id,
+                'algorithm_code': algorithm.algorithm_code,
+                'algorithm_name': algorithm.algorithm_name,
+                'algorithm_channel_number': algorithm.algorithm_channel_number,
+                'algorithm_channels_list': algorithm_channels_list,
+                'remark': algorithm.remark,
+                'algorithm_file': ip_address + algorithm.algorithm_file.url,
+                # 'algorithm_file': os.path.basename(x.algorithm_file.name),
+            }
+        )
         response_list = {
             'list': result_list,
             'total': total,
@@ -175,14 +262,19 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         algorithm_name = self.request.data.get('algorithm_name')
         algorithm_channel_number = self.request.data.get('algorithm_channel_number')
         algorithm_file_path = self.request.data.get('algorithm_file')
-
+        algorithm_channel_str = self.request.data.get('algorithm_channel_matrix')
         remark = self.request.data.get('remark')
-        algorithm_code = algorithm_code_rule(algorithm_name)
-        m = models.algorithmConfig.objects.create(algorithm_code=algorithm_code,
-                                                  algorithm_name=algorithm_name,
-                                                  algorithm_channel_number=algorithm_channel_number,
-                                                  remark=remark)
 
+        algorithm_channel_matrix = ast.literal_eval(algorithm_channel_str)
+
+        algorithm_code = algorithm_code_rule(algorithm_name)
+        new_algorithm = models.algorithmConfig.objects.create(algorithm_code=algorithm_code,
+                                                              algorithm_name=algorithm_name,
+                                                              algorithm_channel_number=algorithm_channel_number,
+                                                              remark=remark)
+        # 将对应的通道信息放入附表
+        for channael_id in algorithm_channel_matrix:
+            models.algorithmChannel.objects.create(algorithm=new_algorithm, channel_id=channael_id)
         # 从URL下载文件内容
         response = requests.get(algorithm_file_path)
         file_content = response.content
@@ -372,36 +464,38 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['get'])
     def componentDisplay(self, request):
         config_id = self.request.query_params.get('id')
+        machine = systemConfig.models.systemConfig.objects.get(id=config_id)
         pageSize = self.request.query_params.get('pageSize')
         current = self.request.query_params.get('current')
         if pageSize is not None and current is not None:
             first = (int(current) - 1) * int(pageSize)
             last = int(current) * int(pageSize)
             if config_id is None:
-                component = models.componentConfig.objects.all()[first:last]
+                components = models.componentConfig.objects.all()[first:last]
             else:
-                component = models.componentConfig.objects.filter(config_id=config_id)[first:last]
+                components = models.componentConfig.objects.filter(config_id=config_id)[first:last]
         else:
-            component = models.componentConfig.objects.filter(config_id=config_id)
-        total = component.count()
+            components = models.componentConfig.objects.filter(config_id=config_id)
+        total = components.count()
         result_list = []
-        for x in component:
-            sensor = systemConfig.models.sensorConfig.objects.get(id=x.sensor_id)
-            sensor_name = sensor.sensor_name
+
+        for component in components:
+            sensor_names = ""
+            sensors = models.componentSensor.objects.filter(component_id=component.id)
+            for sensor in sensors:
+                sensor_name = systemConfig.models.sensorConfig.objects.get(id=sensor.sensor_id).sensor_name
+                # sensor_names.append(sensor_name)
+                sensor_names = f"{sensor_names} {sensor_name}"
             result_list.append(
                 {
-                    'id': x.id,
-                    'config_id': x.config_id,
-                    'machine_code': x.machine_code,
-                    'machine_name': x.machine_name,
-                    'component_name': x.component_name,
-                    'component_code': x.component_code,
-                    'algorithm_id': x.algorithm_id,
-                    'algorithm_name': x.algorithm_name,
-                    'sensor_id': x.sensor_id,
-                    'sensor_name': sensor_name,
-                    'algorithm_channel_data': x.algorithm_channel_data,
-                    'remark': x.remark,
+                    'id': component.id,
+                    'config_id': component.config_id,
+                    'machine_code': machine.machine_code,
+                    'machine_name': machine.machine_name,
+                    'component_name': component.component_name,
+                    'component_code': component.component_code,
+                    'sensor_name': sensor_names,
+                    'remark': component.remark,
                 }
             )
         response_list = {
@@ -426,35 +520,28 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
     def addComponent(self, request):
         config_id = self.request.data.get('config_id')
         component_name = self.request.data.get('component_name')
-        algorithm_id = self.request.data.get('algorithm_id')
         remark = self.request.data.get('remark')
-        sensor_id = self.request.data.get('sensor_id')
-        machines = models.componentConfig.objects.filter(sensor_id=sensor_id)
-        if machines.exists():
-            component_name = machines.first().component_name
-            response = {
-                'status': 500,
-                'message': f'该传感器已被部件：{component_name}使用',
-            }
-            return JsonResponse(response)
-        algorithm_channel_data = self.request.data.get('algorithm_channel_data')
+        sensor_id_str = self.request.data.get('sensor_id')
+        sensor_id_matrix = ast.literal_eval(sensor_id_str)
 
-        system = systemConfig.models.systemConfig.objects.get(id=config_id)
-        algorithm = models.algorithmConfig.objects.get(id=algorithm_id)
+        # 判断传感器是否已经绑定了别的部件；判断传感器状态是否正常
+        flag, response = check_sensor(sensor_id_matrix)
+        if not flag:
+            return JsonResponse(response)
+
         component_code = component_code_rule(component_name)
-        models.componentConfig.objects.create(config_id=config_id,
-                                              machine_code=system.machine_code,
-                                              machine_name=system.machine_name,
-                                              component_name=component_name,
-                                              component_code=component_code,
-                                              algorithm_id=algorithm_id,
-                                              sensor_id=sensor_id,
-                                              algorithm_name=algorithm.algorithm_name,
-                                              algorithm_channel_data=algorithm_channel_data,
-                                              remark=remark)
+        # 创建该部件
+        component = models.componentConfig.objects.create(config_id=config_id,
+                                                          component_name=component_name,
+                                                          component_code=component_code,
+                                                          remark=remark)
+        # 创建该部件对应的传感器id附表
+        for sensor_id in sensor_id_matrix:
+            models.componentSensor.objects.create(sensor_id=sensor_id, component_id=component.id)
+
         response = {
             'status': 200,
-            'message': '新增部件配置成功'
+            'message': f'部件<{component_name}>新增成功'
         }
         return JsonResponse(response)
 
@@ -470,34 +557,55 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         component_id = self.request.data.get('id')
         config_id = self.request.data.get('config_id')
         component_name = self.request.data.get('component_name')
-        algorithm_id = self.request.data.get('algorithm_id')
         remark = self.request.data.get('remark')
-        sensor_id = self.request.data.get('sensor_id')
-        algorithm_channel_data = self.request.data.get('algorithm_channel_data')
+        sensor_id_str = self.request.data.get('sensor_id')
 
-        print(algorithm_channel_data)
-        system = systemConfig.models.systemConfig.objects.get(id=config_id)
-        algorithm = models.algorithmConfig.objects.get(id=algorithm_id)
-        component = models.componentConfig.objects.filter(id=component_id)
+        machine = systemConfig.models.systemConfig.objects.get(id=config_id)
+        component = models.componentConfig.objects.get(id=component_id)
+        if component.monitor_status == 1:
+            response = {
+                'status': 500,
+                'message': f'部件<{component.component_name}>正在监控，请关闭监控后重新操作做'
+            }
+            return JsonResponse(response)
+        component_code = component.component_code
+        component_sensors = models.componentSensor.objects.filter(component_id=component_id)
 
-        if component_name == component.first().component_name:
-            component_code = component.first().component_code
-        else:
-            component_code = component_code_rule(component_name)
+        if component.component_name != component_name:
+            if models.componentConfig.objects.filter(component_name=component_name).exists():
+                response = {
+                    'status': 500,
+                    'message': f'部件名称<{component_name}>已存在，请重新输入'
+                }
+                return JsonResponse(response)
+            else:
+                component_code = component_code_rule(component_name)
 
-        component.update(config_id=config_id,
-                         machine_code=system.machine_code,
-                         machine_name=system.machine_name,
-                         component_name=component_name,
-                         component_code=component_code,
-                         algorithm_id=algorithm_id,
-                         sensor_id=sensor_id,
-                         algorithm_name=algorithm.algorithm_name,
-                         algorithm_channel_data=algorithm_channel_data,
-                         remark=remark)
+        sensor_id_matrix_new = ast.literal_eval(sensor_id_str)
+        sensor_id_matrix_old = []
+        for component_sensor in component_sensors:
+            sensor_id_matrix_old.append(component_sensor.sensor_id)
+        # 判断传感器是否已经绑定了别的部件；判断传感器状态是否正常
+        flag, response = check_sensor(sensor_id_matrix_new)
+        if not flag:
+            return JsonResponse(response)
+
+        sensor_to_add, sensor_to_delete = matrix_diff(sensor_id_matrix_old, sensor_id_matrix_new)
+
+        component.component_code = component_code
+        component.component_name = component_name
+        component.remark = remark
+        component.save()
+
+        for sensor_id in sensor_to_add:
+            models.componentSensor.objects.create(sensor_id=sensor_id, component_id=component.id)
+        for sensor_id in sensor_to_delete:
+            query = Q(sensor_id=sensor_id) & Q(component_id=component.id)
+            models.componentSensor.objects.filter(query).delete()
+
         response = {
             'status': 200,
-            'message': '编辑部件配置成功'
+            'message': f'部件<{component_name}>编辑成功'
         }
         return JsonResponse(response)
 
@@ -519,9 +627,11 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
             }
         else:
             models.componentConfig.objects.filter(id=id).delete()
+            models.componentSensor.objects.filter(component_id=id).delete()
+
             response = {
                 'status': 200,
-                'message': '删除部件配置成功！'
+                'message': '部件删除成功！'
             }
         return JsonResponse(response)
 
@@ -532,16 +642,16 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         tags=["component"], )
     @action(detail=False, methods=['get'])
     def sensorSelect(self, request):
-        query = systemConfig.models.sensorConfig.objects.all()
+        sensors = systemConfig.models.sensorConfig.objects.all()
         request_list = []
-        for i in query:
+        for sensor in sensors:
             request_list.append({
-                'id': i.id,
-                'sensor_name': i.sensor_name,
+                'id': sensor.id,
+                'sensor_name': sensor.sensor_name,
             })
         response_list = {
             'list': request_list,
-            'total': query.count(),
+            'total': sensors.count(),
         }
         response = {
             'data': response_list,
@@ -561,7 +671,7 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['get'])
     def channelSelect(self, request):
         sensor_id = self.request.query_params.get('sensor_id')
-        channels = systemConfig.models.channelConfig.objects.filter(channel_id=sensor_id)
+        channels = systemConfig.models.channelConfig.objects.filter(sensor=sensor_id)
         if channels.count() == 0:
             response = {
                 'message': '该传感器下没有通道',
@@ -619,45 +729,47 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         tags=["signal"], )
     @action(detail=False, methods=['get'])
     def signalSelect(self, request):
-        system_config = systemConfig.models.systemConfig.objects.all()
+        machines = systemConfig.models.systemConfig.objects.all()
         request = []
 
-        for i in system_config:
+        for machine in machines:
             request_list = {
-                'value': i.id,
-                'label': i.machine_name + "_" + i.manager,
+                'value': machine.id,
+                'label': machine.machine_name + "_" + machine.manager,
                 'children': [],
             }
-            components = models.componentConfig.objects.filter(config_id=i.id)
+            components = models.componentConfig.objects.filter(config_id=machine.id)
             # print(components)
-            for j in components:
+            for component in components:
                 child_component = {
-                    'value': j.id,
-                    'label': j.component_name,
+                    'value': component.id,
+                    'label': component.component_name,
                     'children': []
                 }
                 request_list['children'].append(child_component)
-                sensor_id = j.sensor_id
-                sensors = systemConfig.models.sensorConfig.objects.filter(id=sensor_id)
-                for k in sensors:
-                    child_sensor = {
-                        'value': k.id,
-                        'label': k.sensor_name,
-                        'children': []
-                    }
-                    child_component['children'].append(child_sensor)
-                    channels = systemConfig.models.channelConfig.objects.filter(channel_id=k.id)
-                    for h in channels:
-                        child_channel = {
-                            'value': h.id,
-                            'label': h.channel_name,
+                # sensor_id = j.sensor_id
+                component_sensors = models.componentSensor.objects.filter(component_id=component.id)
+                for component_sensor in component_sensors:
+                    sensors = systemConfig.models.sensorConfig.objects.filter(id=component_sensor.sensor_id)
+                    for sensor in sensors:
+                        child_sensor = {
+                            'value': sensor.id,
+                            'label': sensor.sensor_name,
+                            'children': []
                         }
-                        child_sensor['children'].append(child_channel)
+                        child_component['children'].append(child_sensor)
+                        channels = systemConfig.models.channelConfig.objects.filter(sensor=sensor.id)
+                        for h in channels:
+                            child_channel = {
+                                'value': h.id,
+                                'label': h.channel_name,
+                            }
+                            child_sensor['children'].append(child_channel)
             request.append(request_list)
 
         response = {
             'list': request,
-            'total': system_config.count(),
+            'total': machines.count(),
         }
         response = {
             'data': response,
@@ -792,7 +904,7 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         if influx_clean_flag == 1:
             system.influx_clean_date = today_str
             system.save()
-            threading.Thread(target=influxDataToCsv, args=(client,today_str)).start()
+            threading.Thread(target=influxDataToCsv, args=(client, today_str)).start()
             # influxDataToCsv(client)
         measurement = sensor.measurement
         unit = channel.unit
@@ -905,3 +1017,50 @@ def influxDataToCsv(client, today_str):
                 #     client.query(delete_query)
 
                 csv_bytes_io.close()  # 关闭 BytesIO
+
+
+# 判断传感器是否已经绑定了别的部件；判断传感器状态是否正常
+def check_sensor(matrix):
+    flag = True
+    response = {}
+    for sensor_id in matrix:
+        component_senors = models.componentSensor.objects.filter(sensor_id=sensor_id)
+        sensor = systemConfig.models.sensorConfig.objects.get(id=sensor_id)
+        sensor_name = sensor.sensor_name
+        if component_senors.exists():
+            flag = False
+            component_id = component_senors.first().component_id
+            component_name = models.componentConfig.objects.get(id=component_id).component_name
+            response = {
+                'status': 500,
+                'message': f'传感器<{sensor_name}>已被部件<{component_name}>”使用',
+            }
+            return flag, response
+        if sensor.sensor_status is False:
+            flag = False
+            response = {
+                'status': 500,
+                'message': f'传感器<{sensor_name}>状态异常，请重启检查传感器状态',
+            }
+        return flag, response
+
+# 多个下拉编辑时重新选择时的判定
+def matrix_diff(matrix_old, matrix_new):
+    set_A = set(matrix_old)
+    set_B = set(matrix_new)
+
+    # 找到两个集合的交集
+    common_elements = set_A.intersection(set_B)
+    # 将结果转换回列表
+    common_elements_list = list(common_elements)
+
+    # 找到第一个集合中存在，但第二个集合中不存在的元素
+    elements_in_A_not_in_B = set_A.difference(set_B)
+    # 将结果转换回列表
+    matrix_to_delete = list(elements_in_A_not_in_B)
+
+    # 找到第二个集合中存在，但第一个集合中不存在的元素
+    elements_in_B_not_in_A = set_B.difference(set_A)
+    # 将结果转换回列表
+    matrix_to_add = list(elements_in_B_not_in_A)
+    return matrix_to_add, matrix_to_delete

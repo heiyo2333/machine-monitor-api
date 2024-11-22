@@ -204,11 +204,11 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         id = g.validated_data.get('id')
         sensor_configs = models.sensorConfig.objects.filter(config_id=id)
         for sensor_config in sensor_configs:
-            channels = models.channelConfig.objects.filter(channel=sensor_config)
+            channels = models.channelConfig.objects.filter(sensor=sensor_config)
             if channels.filter(is_monitor=True).exists():
                 return JsonResponse({'status': 500, 'message': '不能删除，存在正在监控的通道配置'})
 
-            # 方法2：if models.channelConfig.objects.filter(channel=sensor_config, is_monitor=True).exists():
+            # 方法2：if models.channelConfig.objects.filter(sensor=sensor_config, is_monitor=True).exists():
             #     return JsonResponse({'status': 500, 'message': '不能删除，存在正在监控的通道配置'}):
             else:
                 models.sensorConfig.objects.filter(config_id=id).delete()
@@ -430,20 +430,19 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         ruler = request.data.get('ruler')
         # 验证 URL
 
-        h = models.sensorConfig.objects.create(
-            sensor_code=sensor_code,
-            sensor_name=sensor_name,
-            frequency=frequency,
-            channel_number=channel_number,
-            remark=remark,
-            measurement=measurement,
-            config_id=config_id,
-            time_out=time_out,
-            receive_number=receive_number,
-            sensor_port=sensor_port,
-            command_code=command_code,
-            ruler=ruler,
-        )
+        new_sensor = models.sensorConfig.objects.create(sensor_code=sensor_code,
+                                                        sensor_name=sensor_name,
+                                                        frequency=frequency,
+                                                        channel_number=channel_number,
+                                                        remark=remark,
+                                                        measurement=measurement,
+                                                        config_id=config_id,
+                                                        time_out=time_out,
+                                                        receive_number=receive_number,
+                                                        sensor_port=sensor_port,
+                                                        command_code=command_code,
+                                                        ruler=ruler,
+                                                        )
 
         print(sensor_image_path)
         # 从URL下载文件内容
@@ -458,9 +457,9 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
 
         for m in range(1, int(channel_number) + 1):
             models.channelConfig.objects.create(
-                sensor_name=h.sensor_name,
-                sensor_code=h.sensor_code,
-                channel_id=h.id
+                sensor_name=new_sensor.sensor_name,
+                sensor_code=new_sensor.sensor_code,
+                sensor=new_sensor
             )
         response = {
             'status': 200,
@@ -533,12 +532,6 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
 
             n.sensor_image.save(f'{sensor_code}.png', file_obj, save=True)
 
-            # 通过主表去反查附表
-            channel_info = sensor.channelconfig_set.all()
-            for channel in channel_info:
-                channel.sensor_name = sensor.sensor_name
-                channel.sensor_code = sensor.sensor_code
-                channel.save()
             response = {
                 'status': 200,
                 'message': '修改成功'
@@ -557,7 +550,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         g = serializer.sensorDeleteserializer(data=request.data)
         g.is_valid()
         id = g.validated_data.get('id')
-        channels = models.channelConfig.objects.filter(channel=id)
+        channels = models.channelConfig.objects.filter(sensor_id=id)
         if channels.filter(is_monitor=True).exists():
             return JsonResponse({'status': 500, 'message': '不能删除，存在正在监控的通道配置'}, )
 
@@ -600,7 +593,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             channel.is_monitor = True
             channel.save()
             print('AAAAAAAAAAAAA')
-            sensorconfig = channel.channel  # 主表实例  第二个channel是附表外键的意思
+            sensorconfig = channel.sensor  # 主表实例  第二个sensor是附表外键的意思
             sensorconfig.sensor_status = 1
             sensorconfig.save()
 
@@ -636,8 +629,8 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             channel.save()
 
             # 将传感器状态置1
-            if models.channelConfig.objects.filter(Q(channel_id=channel.channel_id) & Q(is_monitor=True)).count() == 0:
-                sensorconfig = channel.channel  # 主表实例
+            if models.channelConfig.objects.filter(Q(sensor=channel.sensor) & Q(is_monitor=True)).count() == 0:
+                sensorconfig = channel.sensor  # 主表实例
                 sensorconfig.sensor_status = 0
                 sensorconfig.save()
                 try:
@@ -705,18 +698,19 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         sensor_id = self.request.query_params.get("id")
         if sensor_id:
             print('sensor_id', sensor_id)
-            configuration = models.sensorConfig.objects.get(id=sensor_id)
+            sensor = models.sensorConfig.objects.get(id=sensor_id)
             # 通过主表去反查附表
-            channel_info = configuration.channelconfig_set.all()
+            channel_info = sensor.channelconfig_set.all()
             list = []
             for channel in channel_info:
                 print(channel.channel_name)
                 list.append({
                     'id': channel.id,
-                    'sensor_code': channel.sensor_code,
-                    'sensor_name': channel.sensor_name,
+                    'sensor_code': sensor.sensor_code,
+                    'sensor_name': sensor.sensor_name,
                     'channel_name': channel.channel_name,
                     'overrun_times': channel.overrun_times,
+                    'channel_field': channel.channel_field,
                     'channel_threshold': channel.channel_threshold,
                     'is_monitor': channel.is_monitor,
                     'unit': channel.unit,

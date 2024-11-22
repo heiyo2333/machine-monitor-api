@@ -1,5 +1,7 @@
 from django.db import models
 
+import systemConfig.models
+
 
 # 算法配置
 class algorithmConfig(models.Model):
@@ -10,17 +12,25 @@ class algorithmConfig(models.Model):
     remark = models.CharField(max_length=32, null=True)  # 备注
 
 
+# 算法附表：算法下的部件
+class algorithmChannel(models.Model):
+    algorithm = models.ForeignKey(algorithmConfig, db_constraint=True, on_delete=models.CASCADE)  # 外键
+    # channel_id = models.IntegerField(null=True)  # 算法编号
+    channel = models.ForeignKey(systemConfig.models.channelConfig, db_constraint=True, on_delete=models.CASCADE, null=True)  # 外键
+
+
 # 部件配置主表
 class componentConfig(models.Model):
     config_id = models.IntegerField(null=True)  # 机床所在配置的id
-    machine_code = models.CharField(max_length=32, null=True)  # 机床编号
-    machine_name = models.CharField(max_length=32, null=True)  # 机床名称
     component_code = models.CharField(max_length=32, null=False)  # 部件编号
     component_name = models.CharField(max_length=32, null=True)  # 部件名称
-    algorithm_id = models.IntegerField(null=True)  # 算法id
-    algorithm_name = models.CharField(max_length=32, null=True)  # 算法名称
-    algorithm_channel_data = models.CharField(max_length=32, null=True)  # 算法通道
     remark = models.CharField(max_length=32, null=True)  # 备注
-    sensor_id = models.IntegerField(null=True)  # 传感器id
-    component_status = models.CharField(max_length=32, null=False)  # 部件运行状态
+    component_status = models.BooleanField(max_length=32, null=False, default=0)  # 部件运行状态
     monitor_status = models.BooleanField(default=False)  # 监测状态
+
+
+# 部件附表：部件下的传感器
+class componentSensor(models.Model):
+    component = models.ForeignKey(componentConfig, db_constraint=True, on_delete=models.CASCADE)  # 外键
+    # sensor_id = models.IntegerField(null=True)  # 传感器id
+    sensor = models.ForeignKey(systemConfig.models.sensorConfig, db_constraint=True, on_delete=models.CASCADE, null=True)  # 外键

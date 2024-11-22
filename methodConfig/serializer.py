@@ -20,6 +20,7 @@ class algorithmSerializer(serializers.Serializer):
     algorithm_name = serializers.CharField(help_text="算法名称", max_length=32)  # 算法名称
     algorithm_channel_number = serializers.IntegerField(help_text="算法通道数")  # 算法通道数
     algorithm_file = serializers.CharField(help_text="算法文件")  # 算法文件
+    algorithm_channel_matrix = serializers.CharField(help_text="算法输入通道矩阵")  # 算法文件
     remark = serializers.CharField(help_text="备注", max_length=32, required=False)  # 备注
 
 
@@ -61,21 +62,17 @@ class editComponentSerializer(serializers.Serializer):
     id = serializers.IntegerField(help_text="部件id")
     config_id = serializers.CharField(help_text="系统配置id", max_length=32)  # 系统配置id
     component_name = serializers.CharField(help_text="部件名称", max_length=32)  # 部件名称
-    algorithm_id = serializers.IntegerField(help_text="算法id")  # 算法id
     remark = serializers.CharField(help_text="备注", max_length=32, required=False)  # 备注
     # 算法输入通道数据： [{"sensor_id":1,"channel_id":2},{"sensor_id":2,"channel_id":5},{"sensor_id":1,"channel_id":3}]
-    algorithm_channel_data = serializers.CharField(help_text="算法输入通道数据")
-    sensor_id = serializers.IntegerField(help_text="传感器id")
+    sensor_id = serializers.CharField(help_text="传感器id矩阵")
 
 
 # 部件配置-新增
 class addComponentSerializer(serializers.Serializer):
     config_id = serializers.CharField(help_text="机床id", max_length=32)  # 机床id
     component_name = serializers.CharField(help_text="部件名称", max_length=32)  # 部件名称
-    algorithm_id = serializers.IntegerField(help_text="算法id")  # 算法id
     remark = serializers.CharField(help_text="备注", max_length=32, required=False)  # 备注
-    sensor_id = serializers.IntegerField(help_text="传感器id")
-    algorithm_channel_data = serializers.CharField(help_text="算法输入通道数据")
+    sensor_id = serializers.CharField(help_text="传感器id矩阵")
 
 
 # 上传文件
