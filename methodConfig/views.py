@@ -196,6 +196,7 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
 
         # 通道信息列表：algorithm_channels_list
         algorithm_channels_list = []
+        result_list = []
         for algorithm in algorithms:
             algorithm_channels = models.algorithmChannel.objects.filter(algorithm_id=algorithm.id)
             algorithm_list = {
@@ -225,20 +226,20 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
                 component_list['children'].append(sensor_list)
                 algorithm_list['children'].append(component_list)
             algorithm_channels_list.append(algorithm_list)
-        result_list  = []
 
-        result_list.append(
-            {
-                'id': algorithm.id,
-                'algorithm_code': algorithm.algorithm_code,
-                'algorithm_name': algorithm.algorithm_name,
-                'algorithm_channel_number': algorithm.algorithm_channel_number,
-                'algorithm_channels_list': algorithm_channels_list,
-                'remark': algorithm.remark,
-                'algorithm_file': ip_address + algorithm.algorithm_file.url,
-                # 'algorithm_file': os.path.basename(x.algorithm_file.name),
-            }
-        )
+
+            result_list.append(
+                {
+                    'id': algorithm.id,
+                    'algorithm_code': algorithm.algorithm_code,
+                    'algorithm_name': algorithm.algorithm_name,
+                    'algorithm_channel_number': algorithm.algorithm_channel_number,
+                    'algorithm_channels_list': algorithm_channels_list,
+                    'remark': algorithm.remark,
+                    'algorithm_file': ip_address + algorithm.algorithm_file.url,
+                    # 'algorithm_file': os.path.basename(x.algorithm_file.name),
+                }
+            )
         response_list = {
             'list': result_list,
             'total': total,
@@ -310,11 +311,11 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
     def algorithmDelete(self, request):
         m = serializer.deleteAlgorithmSerializer(data=request.data)
         m.is_valid()
-        algorithmId = m.validated_data.get('id', None)
-        n = models.algorithmConfig.objects.get(id=algorithmId)
-        if n.algorithm_file:
-            os.remove(n.algorithm_file.path)
-        n.delete()
+        algorithm_id = m.validated_data.get('id', None)
+        algorithm = models.algorithmConfig.objects.get(id=algorithm_id)
+        if algorithm.algorithm_file:
+            os.remove(algorithm.algorithm_file.path)
+        algorithm.delete()
         response = {
             'status': 200,
             'message': '删除算法配置成功'
@@ -335,23 +336,50 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         algorithm_channel_number = self.request.data.get('algorithm_channel_number')
         remark = self.request.data.get('remark')
         algorithm_file_path = self.request.data.get('algorithm_file')
+        algorithm_channel_str = self.request.data.get('algorithm_channel_matrix')
 
-        algorithm_code = algorithm_code_rule(algorithm_name)
-        models.algorithmConfig.objects.filter(id=algorithm_id).update(algorithm_code=algorithm_code,
-                                                                      algorithm_name=algorithm_name,
-                                                                      algorithm_channel_number=algorithm_channel_number,
-                                                                      remark=remark)
-        n = models.algorithmConfig.objects.get(id=algorithm_id)
-        file_path = n.algorithm_file.path
+        algorithm = models.algorithmConfig.objects.get(id=algorithm_id)
+        algorithm_code = algorithm.algorithm_code
+        if algorithm.algorithm_name != algorithm_name:
+            if models.algorithmConfig.objects.filter(algorithm_name=algorithm_name).exists():
+                response = {
+                    'status': 500,
+                    'message': f'算法名称<{algorithm_name}>已存在，请重新输入'
+                }
+                return JsonResponse(response)
+            else:
+                algorithm_code = algorithm_code_rule(algorithm_name)
+
+        algorithm.algorithm_name = algorithm_name
+        algorithm.algorithm_code = algorithm_code
+        algorithm.algorithm_channel_number = algorithm_channel_number
+        algorithm.remark = remark
+        algorithm.save()
+
+        algorithm_channels = models.algorithmChannel.objects.filter(algorithm_id=algorithm_id)
+        algorithm_channel_matrix_new = ast.literal_eval(algorithm_channel_str)
+        algorithm_channel_matrix_old = []
+        for algorithm_channel in algorithm_channels:
+            algorithm_channel_matrix_old.append(algorithm_channel.channel_id)
+        channel_to_add, channel_to_delete = matrix_diff(algorithm_channel_matrix_old, algorithm_channel_matrix_new)
+
+        for channel_id in channel_to_add:
+            models.algorithmChannel.objects.create(channel_id=channel_id, algorithm_id=algorithm.id)
+        for channel_id in channel_to_delete:
+            query = Q(channel_id=channel_id) & Q(algorithm_id=algorithm.id)
+            models.algorithmChannel.objects.filter(query).delete()
+
+        file_path = algorithm.algorithm_file.path
         if os.path.exists(file_path):
             os.remove(file_path)
-        else:
-            response = {
-                'status': 500,
-                'message': '该算法文件不存在'
-            }
-
-            return JsonResponse(response)
+        # else的内容可以不用
+        # else:
+        #     response = {
+        #         'status': 500,
+        #         'message': '该算法文件不存在'
+        #     }
+        #
+        #     return JsonResponse(response)
         # if n.algorithm_file:
         #     os.remove(n.algorithm_file.path)
 
@@ -361,7 +389,7 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         # 将内容转换为ContentFile对象
         file_obj = ContentFile(file_content, name=f'{algorithm_code}.py')
 
-        algorithm = algorithmConfig.objects.get(algorithm_code=algorithm_code)
+        # algorithm = algorithmConfig.objects.get(algorithm_code=algorithm_code)
         # 更新algorithm_file字段
         algorithm.algorithm_file.save(f'{algorithm_code}.py', file_obj, save=True)
 

@@ -21,6 +21,7 @@ import socket
 import methodConfig
 import systemConfig
 from methodConfig.views import get_local_ip
+from systemConfig.models import sensorConfig
 from . import models, serializer
 from .models import thermalDiagram
 import threading
@@ -549,22 +550,20 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['get'])
     def sensorData(self, request):
-        config_id = self.request.query_params.get('id')
-        channels_data1 = methodConfig.models.componentConfig.objects.filter(config_id=config_id)
-        unique_numbers = set()
-        for a in channels_data1:
-            # 去掉字符串两端的方括号，并按逗号分割字符串
-            numbers_str = a.algorithm_channel_data[1:-1].split(',')
-            # 将字符串转换为整数并添加到集合中
-            for num_str in numbers_str:
-                unique_numbers.add(int(num_str))
-        channels_1 = list(unique_numbers)
-        channels_data2 = systemConfig.models.channelConfig.objects.filter(id__in=channels_1,channel_status__in =[1,2]).order_by('-overrun_times')
+        component_id = self.request.query_params.get('id')
+        component_sensors = methodConfig.models.componentSensor.objects.filter(component_id=component_id)
+        channel_matrix = []
+        for component_sensor in component_sensors:
+            sensor = systemConfig.models.sensorConfig.objects.get(id=component_sensor.sensor_id)
+            channels = systemConfig.models.channelConfig.objects.filter(sensor=sensor)
+            for channel in channels:
+                channel_matrix.append(channel.id)
+        channels_data2 = systemConfig.models.channelConfig.objects.filter(id__in=channel_matrix,channel_status__in =[1,2]).order_by('-overrun_times')
         result_list = []
         for i in channels_data2:
             channel_id = i.id
             channel = systemConfig.models.channelConfig.objects.get(id=channel_id)
-            sensor_id = channel.channel_id
+            sensor_id = channel.sensor_id
             sensor = systemConfig.models.sensorConfig.objects.get(id=sensor_id)
             channel_name = channel.channel_name
             sensor_name = sensor.sensor_name
@@ -786,24 +785,35 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['get'])
     def componentTreeList(self, request):
         config_id = self.request.query_params.get('config_id')
-        machine_information = methodConfig.models.componentConfig.objects.filter(config_id=config_id)
-        components = []
-        for x in machine_information:
-            components.append(x.component_name)
+        machine = systemConfig.models.systemConfig.objects.filter(id=config_id)
+        components = methodConfig.models.componentConfig.objects.filter(config_id=config_id)
 
         # 创建部件树数据结构
-        machine_name = machine_information.first().machine_name if machine_information.exists() else '未知机床'
+        machine_name = machine.first().machine_name if machine.exists() else '未知机床'
         response_list = {
             'name': machine_name,
             'value': '1',
             'children': []
         }
-
+        sensor_number = 0
+        component_number = 0
         for component in components:
             child_component = {
-                'name': component,
-                'value': f'1.{len(response_list["children"]) + 1}'
+                'name': component.component_name,
+                'value': f'1.{component_number + 1}',
+                'children': []
             }
+            component_number += 1
+            component_sensors = methodConfig.models.componentSensor.objects.filter(component_id=component.id)
+            for component_sensor in component_sensors:
+                sensor = systemConfig.models.sensorConfig.objects.get(id=component_sensor.sensor_id)
+                child_sensor = {
+                    'name': sensor.sensor_name,
+                    'value': f'2.{sensor_number + 1}',
+                    'children': []
+                }
+                child_component['children'].append(child_sensor)
+                sensor_number += 1
             response_list['children'].append(child_component)
 
         response = {
