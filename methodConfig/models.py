@@ -10,6 +10,8 @@ class algorithmConfig(models.Model):
     algorithm_channel_number = models.IntegerField(null=True)  # 算法通道数
     algorithm_file = models.FileField(upload_to='AlgorithmFile/', null=True)  # 算法文件
     remark = models.CharField(max_length=32, null=True)  # 备注
+    algorithm_monitor_status = models.BooleanField(default=False)  # 算法监测状态
+    config = models.ForeignKey(systemConfig.models.systemConfig, db_constraint=True, on_delete=models.CASCADE, null=True)  # 外键
 
 
 # 算法附表：算法下的部件
@@ -27,6 +29,11 @@ class componentConfig(models.Model):
     remark = models.CharField(max_length=32, null=True)  # 备注
     component_status = models.BooleanField(max_length=32, null=False, default=0)  # 部件运行状态
     monitor_status = models.BooleanField(default=False)  # 监测状态
+    x_axis = models.CharField(max_length=65535, null=True)  # 横坐标
+    y_pre_axis = models.CharField(max_length=65535, null=True)  # 纵坐标1
+    y_last_axis = models.CharField(max_length=65535, null=True)  # 纵坐标2
+    middle_value = models.IntegerField(default=40)  # 中期阈值
+    last_value = models.IntegerField(default=20)  # 末期阈值
 
 
 # 部件附表：部件下的传感器

@@ -121,17 +121,18 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
     @swagger_auto_schema(
         operation_summary='算法配置-算法输入通道多级下拉',
         # 获取参数
-        manual_parameters=[
-            openapi.Parameter('id', openapi.IN_QUERY, description='系统配置id', type=openapi.TYPE_INTEGER,
-                              required=True),
-        ],
+        # manual_parameters=[
+        #     openapi.Parameter('id', openapi.IN_QUERY, description='系统配置id', type=openapi.TYPE_INTEGER,
+        #                       required=True),
+        # ],
         responses={200: openapi.Response('successful')},
         tags=["algorithm"]
     )
     @action(detail=False, methods=['get'])
     def algorithmChannelSelect(self, request):
-        config_id = self.request.query_params.get("id")
+        # config_id = self.request.query_params.get("id")
         # component_query = Q(component_status=True) & Q(config_id=config_id)
+        config_id = systemConfig.models.systemConfig.objects.get(is_apply=1).id
         components = models.componentConfig.objects.filter(component_status=True, config_id=config_id)
         request_list = []
         for component in components:
@@ -189,21 +190,24 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         current = int(self.request.query_params.get('current'))
         first = (current - 1) * pageSize
         last = current * pageSize
-        algorithms = models.algorithmConfig.objects.all()[first:last]
+        config_id = systemConfig.models.systemConfig.objects.get(is_apply=1).id
+        algorithms = models.algorithmConfig.objects.filter(config_id=config_id)[first:last]
         total = algorithms.count()
 
         ip_address = f"http://{get_local_ip()}:8000"
 
+
         # 通道信息列表：algorithm_channels_list
-        algorithm_channels_list = []
+
         result_list = []
         for algorithm in algorithms:
+            algorithm_channels_list = []
             algorithm_channels = models.algorithmChannel.objects.filter(algorithm_id=algorithm.id)
-            algorithm_list = {
-                'value': algorithm.id,
-                'label': algorithm.algorithm_name,
-                'children': []
-            }
+            # algorithm_list = {
+            #     'value': algorithm.id,
+            #     'label': algorithm.algorithm_name,
+            #     'children': []
+            # }
             for algorithm_channel in algorithm_channels:
                 channel = systemConfig.models.channelConfig.objects.get(id=algorithm_channel.channel_id)
                 sensor = systemConfig.models.sensorConfig.objects.get(id=channel.sensor_id)
@@ -224,9 +228,8 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
                 }
                 sensor_list['children'].append(channel_list)
                 component_list['children'].append(sensor_list)
-                algorithm_list['children'].append(component_list)
-            algorithm_channels_list.append(algorithm_list)
-
+                # algorithm_list['children'].append(component_list)
+                algorithm_channels_list.append(component_list)
 
             result_list.append(
                 {
@@ -267,12 +270,13 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         remark = self.request.data.get('remark')
 
         algorithm_channel_matrix = ast.literal_eval(algorithm_channel_str)
-
+        config_id = systemConfig.models.systemConfig.objects.get(is_apply=1).id
         algorithm_code = algorithm_code_rule(algorithm_name)
         new_algorithm = models.algorithmConfig.objects.create(algorithm_code=algorithm_code,
                                                               algorithm_name=algorithm_name,
                                                               algorithm_channel_number=algorithm_channel_number,
-                                                              remark=remark)
+                                                              remark=remark,
+                                                              config_id=config_id,)
         # 将对应的通道信息放入附表
         for channael_id in algorithm_channel_matrix:
             models.algorithmChannel.objects.create(algorithm=new_algorithm, channel_id=channael_id)
@@ -510,6 +514,7 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         for component in components:
             sensor_names = ""
             sensors = models.componentSensor.objects.filter(component_id=component.id)
+            print("sensor_id", sensors.first().id)
             for sensor in sensors:
                 sensor_name = systemConfig.models.sensorConfig.objects.get(id=sensor.sensor_id).sensor_name
                 # sensor_names.append(sensor_name)
@@ -581,7 +586,7 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         tags=["component"],
     )
     @action(detail=False, methods=['post'])
-    def ComponentUpdate(self, request):
+    def componentUpdate(self, request):
         component_id = self.request.data.get('id')
         config_id = self.request.data.get('config_id')
         component_name = self.request.data.get('component_name')
@@ -830,7 +835,6 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['get'])
     def signalDisplay(self, request):
         config_id = self.request.query_params.get('config_id')
-        print(config_id)
         component_id = self.request.query_params.get('component_id')
         sensor_id = self.request.query_params.get('sensor_id')
         channel_id = self.request.query_params.get('channel_id')
@@ -840,7 +844,8 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         channel = systemConfig.models.channelConfig.objects.get(id=channel_id)
         component = models.componentConfig.objects.get(id=component_id)
 
-        if sensor.sensor_status and channel.is_monitor:
+        # if sensor.sensor_status and channel.is_monitor:
+        if sensor.sensor_status:
             database_name = system.database_name
             client = InfluxDBClient(host='localhost', port=8086, username='admin', password='admin',
                                     database=database_name)
@@ -937,7 +942,8 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         measurement = sensor.measurement
         unit = channel.unit
 
-        if sensor.sensor_status and channel.is_monitor:
+        # if sensor.sensor_status and channel.is_monitor:
+        if sensor.sensor_status:
             query = f'SELECT * FROM "{measurement}" ORDER BY time DESC LIMIT 1'
             result = client.query(query)
             client.close()
@@ -1071,6 +1077,7 @@ def check_sensor(matrix):
                 'message': f'传感器<{sensor_name}>状态异常，请重启检查传感器状态',
             }
         return flag, response
+
 
 # 多个下拉编辑时重新选择时的判定
 def matrix_diff(matrix_old, matrix_new):

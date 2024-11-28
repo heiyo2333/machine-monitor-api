@@ -29,7 +29,8 @@ class sensorConfig(models.Model):
     measurement = models.CharField(max_length=32, null=True)  # 传感器数据库字段
     remark = models.CharField(max_length=32, null=True)  # 备注
     sensor_status = models.BooleanField(default=0)  # 状态 1：开启 0：关闭
-    operational_status = models.BooleanField(default=True)  # 运行状态
+    operational_status = models.IntegerField(default=0)  # 传感器--部件状况 0：正常（绿色）1：预警（黄色）2：异常（红色）
+    overrun_times = models.IntegerField(default=0)  # 超限次数
     thread_flag = models.BooleanField(default=0)  # 多线程标志位
     time_out = models.IntegerField(null=True)  # 超时时间
     receive_number = models.IntegerField(null=True)  # 接收数据数量

@@ -299,17 +299,21 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['get'])
     def equipmentStatusList(self, request):
         config_id = self.request.query_params.get('config_id')
+        algorithms = methodConfig.models.algorithmConfig.objects.filter(config_id=config_id)
         machine_all = methodConfig.models.componentConfig.objects.filter(config_id=config_id)
         total = machine_all.count()
         result_list = []
-        for x in machine_all:
+        for algorithm in algorithms:
             result_list.append(
                 {
-                    'id': x.id,
-                    'component_name': x.component_name,
-                    'component_code': x.component_code,
-                    'component_status': x.component_status,
-                    'monitor_status': x.monitor_status,
+                    'id': algorithm.id,
+                    'algorithm_name': algorithm.algorithm_name,
+                    'algorithm_code': algorithm.algorithm_code,
+                    # 'component_name': algorithm.component_name,
+                    # 'component_code': x.component_code,
+                    # 'component_status': x.component_status,
+                    'algorithm_monitor_status': algorithm.algorithm_monitor_status,
+                    # 'monitor_status': x.monitor_status,
                 }
             )
         response_list = {
