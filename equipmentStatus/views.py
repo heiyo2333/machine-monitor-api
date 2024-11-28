@@ -1,15 +1,11 @@
-import json
 import os
-import random
 import time
 import struct
 import numpy as np
 import pandas as pd
-from django.db.models import Q, Max
+from django.db.models import Q
 from django.http import JsonResponse
-from django.urls import reverse
 from drf_yasg.utils import swagger_auto_schema
-from django.views.decorators.csrf import csrf_exempt
 from drf_yasg import openapi
 from influxdb import InfluxDBClient
 from rest_framework.decorators import action
@@ -20,11 +16,13 @@ from rest_framework.authentication import BasicAuthentication
 import socket
 import methodConfig
 import systemConfig
+from media.AlgorithmFile.thresholdDetection import threshold_detection
 from methodConfig.views import get_local_ip
 from systemConfig.models import sensorConfig
 from . import models, serializer
 from .models import thermalDiagram
 import threading
+
 
 # class DatabaseManager:
 #     def __init__(self):
@@ -276,6 +274,7 @@ def connect_database(database_name):
     #                              )
     #         t.start()
     #         threads.append(t)
+
 
 class EquipmentStatusViewSet(viewsets.GenericViewSet):
     authentication_classes = (BasicAuthentication,)
@@ -543,46 +542,32 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
         operation_summary='传感器通道信息',
         # 获取参数
         manual_parameters=[
-            openapi.Parameter('id', openapi.IN_QUERY, description='配置id', type=openapi.TYPE_INTEGER,
+            openapi.Parameter('config_id', openapi.IN_QUERY, description='配置id', type=openapi.TYPE_INTEGER,
                               required=True), ],
         responses={200: openapi.Response('successful', serializer.sensorDataSerializer)},
         tags=["equipment"],
     )
     @action(detail=False, methods=['get'])
     def sensorData(self, request):
-        component_id = self.request.query_params.get('id')
-        component_sensors = methodConfig.models.componentSensor.objects.filter(component_id=component_id)
-        channel_matrix = []
-        for component_sensor in component_sensors:
-            sensor = systemConfig.models.sensorConfig.objects.get(id=component_sensor.sensor_id)
-            channels = systemConfig.models.channelConfig.objects.filter(sensor=sensor)
-            for channel in channels:
-                channel_matrix.append(channel.id)
-        channels_data2 = systemConfig.models.channelConfig.objects.filter(id__in=channel_matrix,channel_status__in =[1,2]).order_by('-overrun_times')
+        config_id = self.request.query_params.get('config_id')
+        components = methodConfig.models.componentConfig.objects.filter(config_id=config_id)
         result_list = []
-        for i in channels_data2:
-            channel_id = i.id
-            channel = systemConfig.models.channelConfig.objects.get(id=channel_id)
-            sensor_id = channel.sensor_id
-            sensor = systemConfig.models.sensorConfig.objects.get(id=sensor_id)
-            channel_name = channel.channel_name
-            sensor_name = sensor.sensor_name
-            channel_threshold = channel.channel_threshold
-            overrun_times = channel.overrun_times
-            channel_status = channel.channel_status
-            result_list.append({
-                'id': channel_id,
-                'sensor_id': sensor_id,
-                'sensor_name': sensor_name,
-                'channel_id': channel_id,
-                'channel_name': channel_name,
-                'channel_threshold': channel_threshold,
-                'overrun_times': overrun_times,
-                'channel_status': channel_status,
-            })
+        for component in components:
+            component_sensors = methodConfig.models.componentSensor.objects.filter(component_id=component.id)
+            for i in component_sensors:
+                sensor = i.sensor_id
+                if "三相加速度" in systemConfig.models.sensorConfig.objects.get(id=sensor).sensor_name:
+                    a = systemConfig.models.sensorConfig.objects.get(id=sensor)
+                    result_list.append({
+                        'id': a.id,
+                        'component_name': component.component_name,
+                        'sensor_name': a.sensor_name,
+                        'overrun_times': a.overrun_times,
+                        'status': a.operational_status,
+                    })
         response_list = {
             'list': result_list,
-            'total': len(channels_data2)
+            'total': len(components)
         }
         response = {
             'data': response_list,
@@ -883,7 +868,6 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
         }
         return JsonResponse(response)
 
-
     # 机床参数查询
     @swagger_auto_schema(
         operation_summary='机床参数查询',
@@ -901,7 +885,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
             machine_parameters = models.machineParameter.objects.filter(config_id=config_id)
             if machine_parameters.count() > 0:
                 machine_parameter = machine_parameters.last()
-                Parameter = {
+                parameter = {
                     'machine_t': machine_parameter.machine_t,
                     'machine_p': machine_parameter.machine_p,
                     'machine_a': machine_parameter.machine_a,
@@ -913,7 +897,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
                     'machine_a_max': machine_parameter.machine_a_max,
                 }
             else:
-                Parameter = {
+                parameter = {
                     'machine_t': 0,
                     'machine_p': 0,
                     'machine_a': 0,
@@ -925,7 +909,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
                     'machine_a_max': 0,
                 }
             response = {
-                'data': Parameter,
+                'data': parameter,
                 'status': 200,
                 'message': '机床参数查询成功'
             }
@@ -942,517 +926,37 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
         operation_summary='剩余寿命曲线',
         # 获取参数
         manual_parameters=[
-            openapi.Parameter('config_id', openapi.IN_QUERY, description='配置id', type=openapi.TYPE_INTEGER,
+            openapi.Parameter('component_id', openapi.IN_QUERY, description='部件id', type=openapi.TYPE_INTEGER,
                               required=True), ],
         responses={200: '剩余寿命曲线获取成功'},
         tags=["equipment"],
     )
     @action(detail=False, methods=['get'])
     def remainingLife(self, request):
-        config_id = self.request.query_params.get('config_id')
-        num_points = 100
-        xData = np.arange(0, 10.1, 0.1).round(1).tolist()
-        if systemConfig.models.systemConfig.objects.filter(id=config_id).exists():
+        component_id = self.request.query_params.get('component_id')
+        c = methodConfig.models.componentConfig.objects.get(id=component_id)
+        if c.x_axis and c.y_pre_axis and c.y_last_axis:
+            data = {
+                'id':c.id,
+                'x_axis':c.x_axis,
+                'y_pre_axis':c.y_pre_axis,
+                'y_last_axis':c.y_last_axis,
+                'middle_value':c.middle_value,
+                'last_value':c.last_value,
+            }
             response = {
                 "status": 200,
-                "message": "Successful",
-                "data": {
-                    "x_axis": [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7,
-                               1.8, 1.9, 2.0, 2.1, 2.2, 2.3, 2.4,
-                               2.5,
-                               2.6,
-                               2.7,
-                               2.8,
-                               2.9,
-                               3.0,
-                               3.1,
-                               3.2,
-                               3.3,
-                               3.4,
-                               3.5,
-                               3.6,
-                               3.7,
-                               3.8,
-                               3.9,
-                               4.0,
-                               4.1,
-                               4.2,
-                               4.3,
-                               4.4,
-                               4.5,
-                               4.6,
-                               4.7,
-                               4.8,
-                               4.9,
-                               5.0,
-                               5.1,
-                               5.2,
-                               5.3,
-                               5.4,
-                               5.5,
-                               5.6,
-                               5.7,
-                               5.8,
-                               5.9,
-                               6.0,
-                               6.1,
-                               6.2,
-                               6.3,
-                               6.4,
-                               6.5,
-                               6.6,
-                               6.7,
-                               6.8,
-                               6.9,
-                               7.0,
-                               7.1,
-                               7.2,
-                               7.3,
-                               7.4,
-                               7.5,
-                               7.6,
-                               7.7,
-                               7.8,
-                               7.9,
-                               8.0,
-                               8.1,
-                               8.2,
-                               8.3,
-                               8.4,
-                               8.5,
-                               8.6,
-                               8.7,
-                               8.8,
-                               8.9,
-                               9.0,
-                               9.1,
-                               9.2,
-                               9.3,
-                               9.4,
-                               9.5,
-                               9.6,
-                               9.7,
-                               9.8,
-                               9.9,
-                               10.0
-                               ],
-                    "y_pre_axis": [
-                        [0, 100],
-                        [1, 97],
-                        [2, 96
-                         ],
-                        [
-                            3,
-                            94
-                        ],
-                        [
-                            4,
-                            92
-                        ]
-                    ],
-                    "y_last_axis": [
-                        [
-                            4,
-                            92
-                        ],
-                        [
-                            5,
-                            90
-                        ],
-                        [
-                            6,
-                            88
-                        ],
-                        [
-                            7,
-                            86
-                        ],
-                        [
-                            8,
-                            84
-                        ],
-                        [
-                            9,
-                            83
-                        ],
-                        [
-                            10,
-                            82
-                        ],
-                        [
-                            11,
-                            80
-                        ],
-                        [
-                            12,
-                            79
-                        ],
-                        [
-                            13,
-                            77
-                        ],
-                        [
-                            14,
-                            76
-                        ],
-                        [
-                            15,
-                            75
-                        ],
-                        [
-                            16,
-                            74
-                        ],
-                        [
-                            17,
-                            73
-                        ],
-                        [
-                            18,
-                            72
-                        ],
-                        [
-                            19,
-                            72
-                        ],
-                        [
-                            20,
-                            71
-                        ],
-                        [
-                            21,
-                            70
-                        ],
-                        [
-                            22,
-                            70
-                        ],
-                        [
-                            23,
-                            69
-                        ],
-                        [
-                            24,
-                            69
-                        ],
-                        [
-                            25,
-                            68
-                        ],
-                        [
-                            26,
-                            67
-                        ],
-                        [
-                            27,
-                            67
-                        ],
-                        [
-                            28,
-                            66
-                        ],
-                        [
-                            29,
-                            66
-                        ],
-                        [
-                            30,
-                            66
-                        ],
-                        [
-                            31,
-                            65
-                        ],
-                        [
-                            32,
-                            65
-                        ],
-                        [
-                            33,
-                            64
-                        ],
-                        [
-                            34,
-                            64
-                        ],
-                        [
-                            35,
-                            63
-                        ],
-                        [
-                            36,
-                            63
-                        ],
-                        [
-                            37,
-                            62
-                        ],
-                        [
-                            38,
-                            62
-                        ],
-                        [
-                            39,
-                            61
-                        ],
-                        [
-                            40,
-                            61
-                        ],
-                        [
-                            41,
-                            60
-                        ],
-                        [
-                            42,
-                            60
-                        ],
-                        [
-                            43,
-                            60
-                        ],
-                        [
-                            44,
-                            59
-                        ],
-                        [
-                            45,
-                            59
-                        ],
-                        [
-                            46,
-                            59
-                        ],
-                        [
-                            47,
-                            59
-                        ],
-                        [
-                            48,
-                            58
-                        ],
-                        [
-                            49,
-                            58
-                        ],
-                        [
-                            50,
-                            58
-                        ],
-                        [
-                            51,
-                            57
-                        ],
-                        [
-                            52,
-                            57
-                        ],
-                        [
-                            53,
-                            57
-                        ],
-                        [
-                            54,
-                            56
-                        ],
-                        [
-                            55,
-                            56
-                        ],
-                        [
-                            56,
-                            56
-                        ],
-                        [
-                            57,
-                            55
-                        ],
-                        [
-                            58,
-                            55
-                        ],
-                        [
-                            59,
-                            55
-                        ],
-                        [
-                            60,
-                            54
-                        ],
-                        [
-                            61,
-                            54
-                        ],
-                        [
-                            62,
-                            54
-                        ],
-                        [
-                            63,
-                            54
-                        ],
-                        [
-                            64,
-                            53
-                        ],
-                        [
-                            65,
-                            53
-                        ],
-                        [
-                            66,
-                            52
-                        ],
-                        [
-                            67,
-                            52
-                        ],
-                        [
-                            68,
-                            51
-                        ],
-                        [
-                            69,
-                            51
-                        ],
-                        [
-                            70,
-                            50
-                        ],
-                        [
-                            71,
-                            49
-                        ],
-                        [
-                            72,
-                            49
-                        ],
-                        [
-                            73,
-                            48
-                        ],
-                        [
-                            74,
-                            48
-                        ],
-                        [
-                            75,
-                            47
-                        ],
-                        [
-                            76,
-                            46
-                        ],
-                        [
-                            77,
-                            46
-                        ],
-                        [
-                            78,
-                            45
-                        ],
-                        [
-                            79,
-                            44
-                        ],
-                        [
-                            80,
-                            44
-                        ],
-                        [
-                            81,
-                            43
-                        ],
-                        [
-                            82,
-                            42
-                        ],
-                        [
-                            83,
-                            41
-                        ],
-                        [
-                            84,
-                            40
-                        ],
-                        [
-                            85,
-                            39
-                        ],
-                        [
-                            86,
-                            37
-                        ],
-                        [
-                            87,
-                            36
-                        ],
-                        [
-                            88,
-                            35
-                        ],
-                        [
-                            89,
-                            34
-                        ],
-                        [
-                            90,
-                            32
-                        ],
-                        [
-                            91,
-                            30
-                        ],
-                        [
-                            92,
-                            29
-                        ],
-                        [
-                            93,
-                            27
-                        ],
-                        [
-                            94,
-                            24
-                        ],
-                        [
-                            95,
-                            22
-                        ],
-                        [
-                            96,
-                            19
-                        ],
-                        [
-                            97,
-                            16
-                        ],
-                        [
-                            98,
-                            12
-                        ],
-                        [
-                            99,
-                            7
-                        ],
-                        [
-                            100,
-                            0
-                        ]
-                    ],
-                    "middle_value": 30,
-                    "last_value": 60,
-                }
+                "message": "剩余寿命曲线获取成功！",
+                "data": data
             }
         else:
-            response = response = {
+             response = {
                 'status': 500,
-                'message': '未找到该机床信息'
+                'message': '暂无剩余寿命曲线数据！'
             }
         return JsonResponse(response)
 
-
-# 部件监控接口
+    # 部件监控接口
     @swagger_auto_schema(
         operation_summary='部件监控',
         # 获取参数
@@ -1465,12 +969,29 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['get'])
     def equipmentMonitor(self, request):
         config_id = self.request.query_params.get('config_id')
-
-        components = methodConfig.models.componentConfig.objects.filter(config_id=config_id,monitor_status=True)
-
-
-
-
+        components = methodConfig.models.componentConfig.objects.filter(config_id=config_id, monitor_status=True)
+        date = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
+        for component in components:
+            sensors = methodConfig.models.componentSensor.objects.filter(component_id=component.id)
+            s1 = None
+            s2 = None
+            for i in sensors:
+                s = i.sensor_id
+                if "电流" in systemConfig.models.sensorConfig.objects.get(id=s).sensor_name:
+                    s1 = s
+                elif "三相加速度" in systemConfig.models.sensorConfig.objects.get(id=s).sensor_name:
+                    s2 = s
+            cur = systemConfig.models.sensorConfig.objects.get(id=s1).measurement
+            vib = systemConfig.models.sensorConfig.objects.get(id=s2).measurement
+            overrun_times = threshold_detection(cur=cur, vib=vib, date=date)
+            if 0 <= overrun_times < 30:
+                operational_status = 0
+            elif 30 <= overrun_times < 100:
+                operational_status = 1
+            else:
+                operational_status = 2
+            systemConfig.models.sensorConfig.objects.filter(id=s2).update(overrun_times=overrun_times,
+                                                                       operational_status=operational_status)
 
         response = {
             'status': 200,

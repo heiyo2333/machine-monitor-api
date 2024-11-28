@@ -658,14 +658,12 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         id = self.request.data.get('id')
         if models.channelConfig.objects.filter(id=id).exists():
             channel_name = self.request.data.get('channel_name')
-            channel_threshold = self.request.data.get('channel_threshold')
             channel_field = self.request.data.get('channel_field')
             remark = self.request.data.get('remark')
             unit = self.request.data.get('unit')
 
             configuration = models.channelConfig.objects.filter(id=id)
             configuration.update(channel_name=channel_name,
-                                 channel_threshold=channel_threshold,
                                  channel_field=channel_field,
                                  remark=remark,
                                  unit=unit
@@ -709,9 +707,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
                     'sensor_code': sensor.sensor_code,
                     'sensor_name': sensor.sensor_name,
                     'channel_name': channel.channel_name,
-                    'overrun_times': channel.overrun_times,
                     'channel_field': channel.channel_field,
-                    'channel_threshold': channel.channel_threshold,
                     'is_monitor': channel.is_monitor,
                     'unit': channel.unit,
                     'remark': channel.remark,

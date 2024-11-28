@@ -229,8 +229,6 @@ class monitor_offSerializer(serializers.Serializer):
 class channelConfigSerializer(serializers.Serializer):
     id = serializers.CharField(label="id")
     channel_name = serializers.CharField(label="通道名称", max_length=32)
-    channel_threshold = serializers.FloatField(label="通道阈值")
-    # overrun_times = serializers.IntegerField(label="超限次数")
     channel_field = serializers.CharField(label="对应字段", max_length=32)
     unit = serializers.CharField(label="传感器通道单位", max_length=32)
     remark = serializers.CharField(label="备注", max_length=32)
@@ -241,7 +239,6 @@ class channelListSerializer(serializers.Serializer):
     sensor_code = serializers.CharField(label="传感器编号", max_length=32)
     sensor_name = serializers.CharField(label="传感器名称", max_length=32)
     channel_name = serializers.CharField(label="通道名称", max_length=32)
-    channel_threshold = serializers.FloatField(label="通道阈值")
     channel_field = serializers.CharField(label="对应字段", max_length=32)
     unit = serializers.CharField(label="传感器通道单位", max_length=32)
     is_monitor = serializers.BooleanField(label="是否监控")
