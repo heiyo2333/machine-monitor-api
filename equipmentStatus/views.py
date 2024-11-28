@@ -301,8 +301,8 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
     def equipmentStatusList(self, request):
         config_id = self.request.query_params.get('config_id')
         algorithms = methodConfig.models.algorithmConfig.objects.filter(config_id=config_id)
-        machine_all = methodConfig.models.componentConfig.objects.filter(config_id=config_id)
-        total = machine_all.count()
+        # machine_all = methodConfig.models.componentConfig.objects.filter(config_id=config_id)
+        total = algorithms.count()
         result_list = []
         for algorithm in algorithms:
             result_list.append(
@@ -387,8 +387,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
         #                                              field_list)).start()
         # 执行监控算法
 
-        machine_status.monitor_status = True
-        # machineStatus.ident =t.ident
+        # machine_status.monitor_status = True
         machine_status.save()
         response = {
             'status': 200,
@@ -418,7 +417,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
             }
             return JsonResponse(response)
 
-        machine_status.monitor_status = False
+        # machine_status.monitor_status = False
         machine_status.save()
         response = {
             'status': 200,
@@ -466,8 +465,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
 
         # 结束监控算法
 
-        methodConfig.models.componentConfig.objects.filter(config_id=config_id).update(monitor_status=False,
-                                                                                       thread_flag=False)
+        methodConfig.models.componentConfig.objects.filter(config_id=config_id).update(thread_flag=False)
 
         response = {
             'status': 200,
@@ -562,7 +560,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
             channels = systemConfig.models.channelConfig.objects.filter(sensor=sensor)
             for channel in channels:
                 channel_matrix.append(channel.id)
-        channels_data2 = systemConfig.models.channelConfig.objects.filter(id__in=channel_matrix,channel_status__in =[1,2]).order_by('-overrun_times')
+        channels_data2 = systemConfig.models.channelConfig.objects.filter(id__in=channel_matrix,channel_status__in =[1,2])#.order_by('-overrun_times')
         result_list = []
         for i in channels_data2:
             channel_id = i.id
@@ -571,8 +569,8 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
             sensor = systemConfig.models.sensorConfig.objects.get(id=sensor_id)
             channel_name = channel.channel_name
             sensor_name = sensor.sensor_name
-            channel_threshold = channel.channel_threshold
-            overrun_times = channel.overrun_times
+            # channel_threshold = channel.channel_threshold
+            # overrun_times = channel.overrun_times
             channel_status = channel.channel_status
             result_list.append({
                 'id': channel_id,
@@ -580,8 +578,8 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
                 'sensor_name': sensor_name,
                 'channel_id': channel_id,
                 'channel_name': channel_name,
-                'channel_threshold': channel_threshold,
-                'overrun_times': overrun_times,
+                # 'channel_threshold': channel_threshold,
+                # 'overrun_times': overrun_times,
                 'channel_status': channel_status,
             })
         response_list = {
@@ -1470,11 +1468,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
     def equipmentMonitor(self, request):
         config_id = self.request.query_params.get('config_id')
 
-        components = methodConfig.models.componentConfig.objects.filter(config_id=config_id,monitor_status=True)
-
-
-
-
+        components = methodConfig.models.componentConfig.objects.filter(config_id=config_id)
 
         response = {
             'status': 200,

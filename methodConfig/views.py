@@ -504,21 +504,33 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
             last = int(current) * int(pageSize)
             if config_id is None:
                 components = models.componentConfig.objects.all()[first:last]
+                total = models.componentConfig.objects.all().count()
             else:
                 components = models.componentConfig.objects.filter(config_id=config_id)[first:last]
+                total = models.componentConfig.objects.filter(config_id=config_id).count()
         else:
             components = models.componentConfig.objects.filter(config_id=config_id)
-        total = components.count()
+            total = components.count()
+        print('total',total)
         result_list = []
 
         for component in components:
-            sensor_names = ""
+            sensor_id_list = []
+            sensor_names_list = []
             sensors = models.componentSensor.objects.filter(component_id=component.id)
-            print("sensor_id", sensors.first().id)
+            # print("sensor_id", sensors.first().id)
             for sensor in sensors:
+                sensor_id = sensor.sensor_id
                 sensor_name = systemConfig.models.sensorConfig.objects.get(id=sensor.sensor_id).sensor_name
-                # sensor_names.append(sensor_name)
-                sensor_names = f"{sensor_names} {sensor_name}"
+                sensor_id_list.append(sensor_id)
+
+                sensor_names_list.append(sensor_name)
+                # sensor_names = f"{sensor_names} {sensor_name}"
+            # sensor_id_list = str(sensor_id_list).replace(" ", "")
+            # sensor_names_list = str(sensor_names_list).replace(" ", "")
+            sensor_list = {
+                            "sensor_id": sensor_id_list,
+                            "sensor_names": sensor_names_list,}
             result_list.append(
                 {
                     'id': component.id,
@@ -527,7 +539,7 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
                     'machine_name': machine.machine_name,
                     'component_name': component.component_name,
                     'component_code': component.component_code,
-                    'sensor_name': sensor_names,
+                    'sensor_list': sensor_list,
                     'remark': component.remark,
                 }
             )
@@ -557,6 +569,7 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         sensor_id_str = self.request.data.get('sensor_id')
         sensor_id_matrix = ast.literal_eval(sensor_id_str)
 
+        # 等会儿还原回来
         # 判断传感器是否已经绑定了别的部件；判断传感器状态是否正常
         flag, response = check_sensor(sensor_id_matrix)
         if not flag:
@@ -595,12 +608,13 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
 
         machine = systemConfig.models.systemConfig.objects.get(id=config_id)
         component = models.componentConfig.objects.get(id=component_id)
-        if component.monitor_status == 1:
-            response = {
-                'status': 500,
-                'message': f'部件<{component.component_name}>正在监控，请关闭监控后重新操作做'
-            }
-            return JsonResponse(response)
+        # # 等会儿还原回来
+        # if component.monitor_status == 1:
+        #     response = {
+        #         'status': 500,
+        #         'message': f'部件<{component.component_name}>正在监控，请关闭监控后重新操作做'
+        #     }
+        #     return JsonResponse(response)
         component_code = component.component_code
         component_sensors = models.componentSensor.objects.filter(component_id=component_id)
 
@@ -618,6 +632,7 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         sensor_id_matrix_old = []
         for component_sensor in component_sensors:
             sensor_id_matrix_old.append(component_sensor.sensor_id)
+        # 等会儿还原回来
         # 判断传感器是否已经绑定了别的部件；判断传感器状态是否正常
         flag, response = check_sensor(sensor_id_matrix_new)
         if not flag:
@@ -653,19 +668,20 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
     def componentDelete(self, request):
         id = self.request.data.get('id')
         component = models.componentConfig.objects.filter(id=id)
-        if component.first().monitor_status:
-            response = {
-                'status': 500,
-                'message': '部件正在监控，暂时无法删除！'
-            }
-        else:
-            models.componentConfig.objects.filter(id=id).delete()
-            models.componentSensor.objects.filter(component_id=id).delete()
+        # 等会儿还原回来
+        # if component.first().monitor_status:
+        #     response = {
+        #         'status': 500,
+        #         'message': '部件正在监控，暂时无法删除！'
+        #     }
+        # else:
+        #     models.componentConfig.objects.filter(id=id).delete()
+        models.componentConfig.objects.filter(component_id=id).delete()
 
-            response = {
-                'status': 200,
-                'message': '部件删除成功！'
-            }
+        response = {
+            'status': 200,
+            'message': '部件删除成功！'
+        }
         return JsonResponse(response)
 
     # 部件配置-传感器选择下拉框

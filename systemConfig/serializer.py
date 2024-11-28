@@ -224,7 +224,7 @@ class sensor_monitorSerializer(serializers.Serializer):
 class channelConfigSerializer(serializers.Serializer):
     id = serializers.CharField(label="id")
     channel_name = serializers.CharField(label="通道名称", max_length=32)
-    channel_threshold = serializers.FloatField(label="通道阈值")
+    # channel_threshold = serializers.FloatField(label="通道阈值")
     # overrun_times = serializers.IntegerField(label="超限次数")
     channel_field = serializers.CharField(label="对应字段", max_length=32)
     unit = serializers.CharField(label="传感器通道单位", max_length=32)

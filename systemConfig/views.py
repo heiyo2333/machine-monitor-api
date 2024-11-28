@@ -577,7 +577,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             return JsonResponse(response)
         channels = models.channelConfig.objects.filter(sensor_id=sensor_id)
         for channel in channels:
-            if channel.channel_name == '' or channel.channel_threshold == '' or channel.overrun_times == '' or channel.unit == '' or channel.channel_field == '':
+            if channel.channel_name == '' or channel.unit == '' or channel.channel_field == '':
                 response = {
                     'status': 500,
                     'message': '请先配置通道'
@@ -656,7 +656,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     def channelConfigupdate(self, request):
         channel_id = self.request.data.get('id')
         channel_name = self.request.data.get('channel_name')
-        channel_threshold = self.request.data.get('channel_threshold')
+        # channel_threshold = self.request.data.get('channel_threshold')
         channel_field = self.request.data.get('channel_field')
         remark = self.request.data.get('remark')
         unit = self.request.data.get('unit')
@@ -664,7 +664,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         if channels.exists():
             channel = channels.first()
             channel.channel_name = channel_name
-            channel.channel_threshold = channel_threshold
+            # channel.channel_threshold = channel_threshold
             channel.channel_field = channel_field
             channel.remark = remark
             channel.unit = unit
@@ -708,9 +708,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
                     'sensor_code': sensor.sensor_code,
                     'sensor_name': sensor.sensor_name,
                     'channel_name': channel.channel_name,
-                    'overrun_times': channel.overrun_times,
                     'channel_field': channel.channel_field,
-                    'channel_threshold': channel.channel_threshold,
                     # 'is_monitor': channel.is_monitor,
                     'unit': channel.unit,
                     'remark': channel.remark,
