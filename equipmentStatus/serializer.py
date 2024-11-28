@@ -66,14 +66,11 @@ class machineInformationSerializer(serializers.Serializer):
 
 
 class sensorDataSerializer(serializers.Serializer):
-    id = serializers.IntegerField(help_text="id")
-    sensor_id = serializers.IntegerField(help_text="传感器id")
+    id = serializers.IntegerField(help_text="传感器id")
+    component_name = serializers.CharField(help_text="部件名称", max_length=32)
     sensor_name = serializers.CharField(help_text="传感器名称", max_length=32)
-    channel_id = serializers.IntegerField(help_text="通道id")
-    channel_name = serializers.CharField(help_text="通道名称", max_length=32)
-    channel_threshold = serializers.FloatField(help_text="通道阈值")
     overrun_times = serializers.IntegerField(help_text="超限次数")
-    channel_status = serializers.IntegerField(help_text="通道状态")
+    operational_status = serializers.IntegerField(help_text="传感器--部件状况 0：正常（绿色）1：预警（黄色）2：异常（红色）")
     status = serializers.BooleanField(help_text="传感器状态")
 
 
