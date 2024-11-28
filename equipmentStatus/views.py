@@ -300,6 +300,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['get'])
     def equipmentStatusList(self, request):
         config_id = self.request.query_params.get('config_id')
+        algorithms = methodConfig.models.algorithmConfig.objects.all
         machine_all = methodConfig.models.componentConfig.objects.filter(config_id=config_id)
         total = machine_all.count()
         result_list = []

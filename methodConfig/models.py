@@ -10,6 +10,7 @@ class algorithmConfig(models.Model):
     algorithm_channel_number = models.IntegerField(null=True)  # 算法通道数
     algorithm_file = models.FileField(upload_to='AlgorithmFile/', null=True)  # 算法文件
     remark = models.CharField(max_length=32, null=True)  # 备注
+    config = models.ForeignKey(systemConfig.models.systemConfig, db_constraint=True, on_delete=models.CASCADE)  # 外键
 
 
 # 算法附表：算法下的部件

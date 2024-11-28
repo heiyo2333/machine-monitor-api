@@ -121,17 +121,18 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
     @swagger_auto_schema(
         operation_summary='算法配置-算法输入通道多级下拉',
         # 获取参数
-        manual_parameters=[
-            openapi.Parameter('id', openapi.IN_QUERY, description='系统配置id', type=openapi.TYPE_INTEGER,
-                              required=True),
-        ],
+        # manual_parameters=[
+        #     openapi.Parameter('id', openapi.IN_QUERY, description='系统配置id', type=openapi.TYPE_INTEGER,
+        #                       required=True),
+        # ],
         responses={200: openapi.Response('successful')},
         tags=["algorithm"]
     )
     @action(detail=False, methods=['get'])
     def algorithmChannelSelect(self, request):
-        config_id = self.request.query_params.get("id")
+        # config_id = self.request.query_params.get("id")
         # component_query = Q(component_status=True) & Q(config_id=config_id)
+        config_id = systemConfig.models.systemConfig.objects.get(is_apply=1).id
         components = models.componentConfig.objects.filter(component_status=True, config_id=config_id)
         request_list = []
         for component in components:
@@ -195,15 +196,16 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         ip_address = f"http://{get_local_ip()}:8000"
 
         # 通道信息列表：algorithm_channels_list
-        algorithm_channels_list = []
+
         result_list = []
         for algorithm in algorithms:
+            algorithm_channels_list = []
             algorithm_channels = models.algorithmChannel.objects.filter(algorithm_id=algorithm.id)
-            algorithm_list = {
-                'value': algorithm.id,
-                'label': algorithm.algorithm_name,
-                'children': []
-            }
+            # algorithm_list = {
+            #     'value': algorithm.id,
+            #     'label': algorithm.algorithm_name,
+            #     'children': []
+            # }
             for algorithm_channel in algorithm_channels:
                 channel = systemConfig.models.channelConfig.objects.get(id=algorithm_channel.channel_id)
                 sensor = systemConfig.models.sensorConfig.objects.get(id=channel.sensor_id)
@@ -224,9 +226,8 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
                 }
                 sensor_list['children'].append(channel_list)
                 component_list['children'].append(sensor_list)
-                algorithm_list['children'].append(component_list)
-            algorithm_channels_list.append(algorithm_list)
-
+                # algorithm_list['children'].append(component_list)
+                algorithm_channels_list.append(component_list)
 
             result_list.append(
                 {
@@ -581,7 +582,7 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         tags=["component"],
     )
     @action(detail=False, methods=['post'])
-    def ComponentUpdate(self, request):
+    def componentUpdate(self, request):
         component_id = self.request.data.get('id')
         config_id = self.request.data.get('config_id')
         component_name = self.request.data.get('component_name')
@@ -840,7 +841,8 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         channel = systemConfig.models.channelConfig.objects.get(id=channel_id)
         component = models.componentConfig.objects.get(id=component_id)
 
-        if sensor.sensor_status and channel.is_monitor:
+        # if sensor.sensor_status and channel.is_monitor:
+        if sensor.sensor_status:
             database_name = system.database_name
             client = InfluxDBClient(host='localhost', port=8086, username='admin', password='admin',
                                     database=database_name)
@@ -937,7 +939,8 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         measurement = sensor.measurement
         unit = channel.unit
 
-        if sensor.sensor_status and channel.is_monitor:
+        # if sensor.sensor_status and channel.is_monitor:
+        if sensor.sensor_status:
             query = f'SELECT * FROM "{measurement}" ORDER BY time DESC LIMIT 1'
             result = client.query(query)
             client.close()
@@ -1071,6 +1074,7 @@ def check_sensor(matrix):
                 'message': f'传感器<{sensor_name}>状态异常，请重启检查传感器状态',
             }
         return flag, response
+
 
 # 多个下拉编辑时重新选择时的判定
 def matrix_diff(matrix_old, matrix_new):

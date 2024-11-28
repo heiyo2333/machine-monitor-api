@@ -26,7 +26,7 @@ class ConfigAddSerializer(serializers.Serializer):
     machine_image = serializers.CharField(help_text="机床图片")
 
 
-#修改配置请求
+# 修改配置请求
 class ConfigUpdateSerializer(serializers.Serializer):
     config_id = serializers.IntegerField(help_text="系统配置id")
     machine_code = serializers.CharField(label="机床编号", max_length=32)
@@ -64,17 +64,17 @@ class ConfigUpdateSerializer(serializers.Serializer):
         learning_file.save()
 
 
-#删除配置请求
+# 删除配置请求
 class ConfigDeleteSerializer(serializers.Serializer):
     id = serializers.CharField(help_text="config_id")
 
 
-#应用配置请求
+# 应用配置请求
 class ConfigApplySerializer(serializers.Serializer):
     id = serializers.CharField(help_text="ID")
 
 
-#拉取配置信息
+# 拉取配置信息
 class ConfigListSerializer(serializers.Serializer):
     label = serializers.CharField(label="配置序号")
     key = serializers.IntegerField(label="配置id")
@@ -83,7 +83,7 @@ class ConfigListSerializer(serializers.Serializer):
     machine_code = serializers.CharField(label="机床编号", max_length=32)
 
 
-#配置信息查询
+# 配置信息查询
 class ConfigInformationSerializer(serializers.Serializer):
     id = serializers.CharField(label="ID")
     machine_code = serializers.CharField(label="机床编号", max_length=32)
@@ -100,7 +100,7 @@ class ConfigInformationSerializer(serializers.Serializer):
     machine_image = serializers.ImageField(label="机床图片")
 
 
-#传感器
+# 传感器
 class sensorSerializer(serializers.Serializer):
     id = serializers.CharField(label="id")
     sensor_code = serializers.CharField(label="传感器编号", max_length=32)  # 传感器编号
@@ -115,7 +115,7 @@ class sensorSerializer(serializers.Serializer):
     config_id = serializers.CharField(label="系统配置id", max_length=32)
 
 
-#传感器查询
+# 传感器查询
 class sensorQuerysserializer(serializers.Serializer):
     id = serializers.CharField(label="id")
     sensor_code = serializers.CharField(label="传感器编号", max_length=32)  # 传感器编号
@@ -131,7 +131,7 @@ class sensorQuerysserializer(serializers.Serializer):
     config_id = serializers.CharField(label="系统配置id", max_length=32, required=True)
 
 
-#传感器新增请求
+# 传感器新增请求
 class sensorAddserializer(serializers.Serializer):
     sensor_code = serializers.CharField(label="传感器编号", max_length=32)  # 传感器编号
     sensor_name = serializers.CharField(max_length=32, label="传感器名称")  # 传感器名称
@@ -210,22 +210,17 @@ class sensorUpdateserializer(serializers.Serializer):
         sensor.save()
 
 
-#传感器删除请求
+# 传感器删除请求
 class sensorDeleteserializer(serializers.Serializer):
     id = serializers.CharField(label="id")
 
 
-#开始监控
-class monitor_onSerializer(serializers.Serializer):
+# 传感器开启/关闭监控
+class sensor_monitorSerializer(serializers.Serializer):
     id = serializers.CharField(label="id")
 
 
-#结束监控
-class monitor_offSerializer(serializers.Serializer):
-    id = serializers.CharField(label="id")
-
-
-#通道配置修改
+# 通道配置修改
 class channelConfigSerializer(serializers.Serializer):
     id = serializers.CharField(label="id")
     channel_name = serializers.CharField(label="通道名称", max_length=32)
@@ -236,7 +231,7 @@ class channelConfigSerializer(serializers.Serializer):
     remark = serializers.CharField(label="备注", max_length=32)
 
 
-#通道配置显示
+# 通道配置显示
 class channelListSerializer(serializers.Serializer):
     sensor_code = serializers.CharField(label="传感器编号", max_length=32)
     sensor_name = serializers.CharField(label="传感器名称", max_length=32)
@@ -247,7 +242,7 @@ class channelListSerializer(serializers.Serializer):
     is_monitor = serializers.BooleanField(label="是否监控")
 
 
-#上传图片
+# 上传图片
 class uploadImageSerializer(serializers.Serializer):
     file = serializers.FileField(help_text="上传图片")
 

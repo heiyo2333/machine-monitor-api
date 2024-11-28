@@ -201,18 +201,16 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     def delete(self, request):
         g = serializer.ConfigDeleteSerializer(data=request.data)
         g.is_valid()
-        id = g.validated_data.get('id')
-        sensor_configs = models.sensorConfig.objects.filter(config_id=id)
-        for sensor_config in sensor_configs:
-            channels = models.channelConfig.objects.filter(sensor=sensor_config)
-            if channels.filter(is_monitor=True).exists():
-                return JsonResponse({'status': 500, 'message': '不能删除，存在正在监控的通道配置'})
-
-            # 方法2：if models.channelConfig.objects.filter(sensor=sensor_config, is_monitor=True).exists():
-            #     return JsonResponse({'status': 500, 'message': '不能删除，存在正在监控的通道配置'}):
-            else:
-                models.sensorConfig.objects.filter(config_id=id).delete()
-        models.systemConfig.objects.filter(id=id).delete()
+        config_id = g.validated_data.get('id')
+        # sensors = models.sensorConfig.objects.filter(config_id=config_id)
+        # for sensor in sensors:
+        #     channels = models.channelConfig.objects.filter(sensor=sensor)
+        #     if channels.filter(is_monitor=True).exists():
+        #         return JsonResponse({'status': 500, 'message': '不能删除，存在正在监控的通道配置'})
+        #
+        #     else:
+        #         models.sensorConfig.objects.filter(config_id=id).delete()
+        models.systemConfig.objects.filter(id=config_id).delete()
         response = {
             'status': 200,
             'message': '删除配置成功'
@@ -549,102 +547,103 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     def sensorDelete(self, request):
         g = serializer.sensorDeleteserializer(data=request.data)
         g.is_valid()
-        id = g.validated_data.get('id')
-        channels = models.channelConfig.objects.filter(sensor_id=id)
-        if channels.filter(is_monitor=True).exists():
-            return JsonResponse({'status': 500, 'message': '不能删除，存在正在监控的通道配置'}, )
-
-        else:
-            models.sensorConfig.objects.filter(id=id).delete()
-            response = {
-                'status': 200,
-                'message': '删除成功'
-            }
-            return JsonResponse(response)
+        sensor_id = g.validated_data.get('id')
+        models.sensorConfig.objects.filter(id=sensor_id).delete()
+        response = {
+            'status': 200,
+            'message': '删除成功'
+        }
+        return JsonResponse(response)
 
     #开始监控
     @swagger_auto_schema(
         operation_summary='开始监控',
-        request_body=serializer.monitor_onSerializer,
+        request_body=serializer.sensor_monitorSerializer,
         responses={200: '开始监控'},
-        tags=["channel"],
+        tags=["sensor"],
     )
     @action(detail=False, methods=['post'])
-    def monitor_on(self, request):
-        h = serializer.monitor_onSerializer(data=request.data)
+    def sensor_monitor_on(self, request):
+        h = serializer.sensor_monitorSerializer(data=request.data)
         h.is_valid()
-        id = h.validated_data.get('id')
+        sensor_id = h.validated_data.get('id')
         # 检查记录是否已经在监控状态
-        channel = models.channelConfig.objects.get(id=id)
-        if channel.is_monitor:
+        sensor = models.sensorConfig.objects.get(id=sensor_id)
+        if sensor.sensor_status:
             response = {
-                'status': 400,
-                'message': '该通道已经在监控状态'
+                'status': 200,
+                'message': f'传感器<{sensor.sensor_name}>已经在监控状态'
             }
             return JsonResponse(response)
-        else:
-            if channel.channel_name == '' or channel.overrun_times == '' or channel.channel_field == '':
+        channels = models.channelConfig.objects.filter(sensor_id=sensor_id)
+        for channel in channels:
+            if channel.channel_name == '' or channel.channel_threshold == '' or channel.overrun_times == '' or channel.unit == '' or channel.channel_field == '':
                 response = {
-                    'status': 200,
+                    'status': 500,
                     'message': '请先配置通道'
                 }
                 return JsonResponse(response)
-            # 更新记录为监控状态
-            channel.is_monitor = True
-            channel.save()
-            print('AAAAAAAAAAAAA')
-            sensorconfig = channel.sensor  # 主表实例  第二个sensor是附表外键的意思
-            sensorconfig.sensor_status = 1
-            sensorconfig.save()
+            # # 更新通道监控状态
+            # channel.is_monitor = True
+            # channel.save()
+        sensor.sensor_status = 1
+        sensor.save()
 
-            response = {
-                'status': 200,
-                'message': '开始监控成功'
-            }
-            return JsonResponse(response)
+        response = {
+            'status': 200,
+            'message': '开始监控成功'
+        }
+        return JsonResponse(response)
 
     #结束监控
     @swagger_auto_schema(
         operation_summary='结束监控',
-        request_body=serializer.monitor_offSerializer,
+        request_body=serializer.sensor_monitorSerializer,
         responses={200: '结束监控'},
-        tags=["channel"],
+        tags=["sensor"],
     )
     @action(detail=False, methods=['post'])
-    def monitor_off(self, request):
-        h = serializer.monitor_offSerializer(data=request.data)
+    def sensor_monitor_off(self, request):
+        h = serializer.sensor_monitorSerializer(data=request.data)
         h.is_valid()
-        id = h.validated_data.get('id')
-        channel = models.channelConfig.objects.get(id=id)
+        sensor_id = h.validated_data.get('id')
+        sensor = models.sensorConfig.objects.get(id=sensor_id)
 
-        if not channel.is_monitor:
-            response = {
-                'status': 500,
-                'message': '该通道已经处于非监控状态'
-            }
-            return JsonResponse(response)
-        else:
-            # 更新记录为非监控状态
-            channel.is_monitor = False
-            channel.save()
-
-            # 将传感器状态置1
-            if models.channelConfig.objects.filter(Q(sensor=channel.sensor) & Q(is_monitor=True)).count() == 0:
-                sensorconfig = channel.sensor  # 主表实例
-                sensorconfig.sensor_status = 0
-                sensorconfig.save()
-                try:
-                    response = requests.get(
-                        'http://192.168.110.133:8000/api/config/sensorDisplay?current=1&pageSize=10')
-                    response.raise_for_status()
-                except requests.RequestException as e:
-                    # 处理请求异常
-                    print(f"Error refreshing the frontend page: {e}")
+        if not sensor.sensor_status:
             response = {
                 'status': 200,
-                'message': '结束监控成功'
+                'message': f'传感器<{sensor.sensor_name}>已经处于非监控状态'
             }
             return JsonResponse(response)
+        # 更新记录为非监控状态
+        sensor.sensor_status = False
+        sensor.save()
+        # try:
+        #     url = 'http://192.168.110.180:8001/user/sensorConfig/sensorDisplayList?current=1&pageSize=10'
+        #     response = requests.get(url)
+        #     response.raise_for_status()
+        #
+        #     # data = {}            # response = requests.get(url, params=data, timeout=10)
+        # except requests.RequestException as e:
+        #     # 处理请求异常
+        #     print(f"Error refreshing the frontend page: {e}")
+            # # 将传感器状态置1
+            # if models.channelConfig.objects.filter(Q(sensor=channel.sensor) & Q(is_monitor=True)).count() == 0:
+            #     sensorconfig = channel.sensor  # 主表实例
+            #     sensorconfig.sensor_status = 0
+            #     sensorconfig.save()
+            #     try:
+            #         response = requests.get(
+            #             'http://192.168.110.133:8000/api/config/sensorDisplay?current=1&pageSize=10')
+            #         response.raise_for_status()
+            #     except requests.RequestException as e:
+            #         # 处理请求异常
+            #         print(f"Error refreshing the frontend page: {e}")
+        response = {
+            'status': 200,
+            'message': '结束监控成功'
+        }
+        return JsonResponse(response)
 
     #通道配置编辑
     @swagger_auto_schema(
@@ -655,21 +654,21 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['post'])
     def channelConfigupdate(self, request):
-        id = self.request.data.get('id')
-        if models.channelConfig.objects.filter(id=id).exists():
-            channel_name = self.request.data.get('channel_name')
-            channel_threshold = self.request.data.get('channel_threshold')
-            channel_field = self.request.data.get('channel_field')
-            remark = self.request.data.get('remark')
-            unit = self.request.data.get('unit')
-
-            configuration = models.channelConfig.objects.filter(id=id)
-            configuration.update(channel_name=channel_name,
-                                 channel_threshold=channel_threshold,
-                                 channel_field=channel_field,
-                                 remark=remark,
-                                 unit=unit
-                                 )
+        channel_id = self.request.data.get('id')
+        channel_name = self.request.data.get('channel_name')
+        channel_threshold = self.request.data.get('channel_threshold')
+        channel_field = self.request.data.get('channel_field')
+        remark = self.request.data.get('remark')
+        unit = self.request.data.get('unit')
+        channels = models.channelConfig.objects.filter(id=channel_id)
+        if channels.exists():
+            channel = channels.first()
+            channel.channel_name = channel_name
+            channel.channel_threshold = channel_threshold
+            channel.channel_field = channel_field
+            channel.remark = remark
+            channel.unit = unit
+            channel.save()
             response = {
                 'status': 200,
                 'message': '修改成功'
@@ -712,7 +711,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
                     'overrun_times': channel.overrun_times,
                     'channel_field': channel.channel_field,
                     'channel_threshold': channel.channel_threshold,
-                    'is_monitor': channel.is_monitor,
+                    # 'is_monitor': channel.is_monitor,
                     'unit': channel.unit,
                     'remark': channel.remark,
                 })
