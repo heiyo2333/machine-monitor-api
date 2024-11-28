@@ -830,7 +830,6 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['get'])
     def signalDisplay(self, request):
         config_id = self.request.query_params.get('config_id')
-        print(config_id)
         component_id = self.request.query_params.get('component_id')
         sensor_id = self.request.query_params.get('sensor_id')
         channel_id = self.request.query_params.get('channel_id')
