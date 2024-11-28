@@ -190,10 +190,12 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         current = int(self.request.query_params.get('current'))
         first = (current - 1) * pageSize
         last = current * pageSize
-        algorithms = models.algorithmConfig.objects.all()[first:last]
+        config_id = systemConfig.models.systemConfig.objects.get(is_apply=1).id
+        algorithms = models.algorithmConfig.objects.filter(config_id=config_id)[first:last]
         total = algorithms.count()
 
         ip_address = f"http://{get_local_ip()}:8000"
+
 
         # 通道信息列表：algorithm_channels_list
 
@@ -268,12 +270,13 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         remark = self.request.data.get('remark')
 
         algorithm_channel_matrix = ast.literal_eval(algorithm_channel_str)
-
+        config_id = systemConfig.models.systemConfig.objects.get(is_apply=1).id
         algorithm_code = algorithm_code_rule(algorithm_name)
         new_algorithm = models.algorithmConfig.objects.create(algorithm_code=algorithm_code,
                                                               algorithm_name=algorithm_name,
                                                               algorithm_channel_number=algorithm_channel_number,
-                                                              remark=remark)
+                                                              remark=remark,
+                                                              config_id=config_id,)
         # 将对应的通道信息放入附表
         for channael_id in algorithm_channel_matrix:
             models.algorithmChannel.objects.create(algorithm=new_algorithm, channel_id=channael_id)
@@ -511,6 +514,7 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         for component in components:
             sensor_names = ""
             sensors = models.componentSensor.objects.filter(component_id=component.id)
+            print("sensor_id", sensors.first().id)
             for sensor in sensors:
                 sensor_name = systemConfig.models.sensorConfig.objects.get(id=sensor.sensor_id).sensor_name
                 # sensor_names.append(sensor_name)
