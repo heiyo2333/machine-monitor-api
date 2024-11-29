@@ -6,7 +6,7 @@ class algorithmStatusListSerializer(serializers.Serializer):
     id = serializers.IntegerField(help_text="id")
     algorithm_code = serializers.CharField(help_text="算法编码", max_length=32)  # 算法编号
     algorithm_name = serializers.CharField(help_text="算法名称", max_length=32)  # 算法名称
-    algorithm_type = serializers.IntegerField(null=True) # 算法类型：0--故障诊断，1--寿命预测
+    algorithm_type = serializers.IntegerField(help_text="算法类型") # 算法类型：0--故障诊断，1--寿命预测
     function_name = serializers.CharField(help_text="算法函数名称", max_length=32)  # 算法函数名称
     algorithm_monitor_status = serializers.BooleanField(help_text="是否监测")  # 算法监测状态
 

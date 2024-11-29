@@ -20,8 +20,6 @@ import socket
 import equipmentStatus.models
 import methodConfig
 import systemConfig
-# from media.AlgorithmFile.thresholdDetection import threshold_detection
-from media.AlgorithmFile.thresholdDetection import threshold_detection
 from methodConfig.models import algorithmConfig
 from methodConfig.views import get_local_ip
 from systemConfig.models import sensorConfig
@@ -117,7 +115,7 @@ def connect_database(database_name):
 class EquipmentStatusViewSet(viewsets.GenericViewSet):
     authentication_classes = (BasicAuthentication,)
     parser_classes = (MultiPartParser, FormParser)
-    serializer_class = serializer.equipmentStatusSerializer  # 添加这一行
+    serializer_class = serializer.algorithmStatusListSerializer  # 添加这一行
 
     # 返回数据库所有对象.
     def get_queryset(self):

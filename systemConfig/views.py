@@ -20,7 +20,7 @@ from drf_yasg import openapi
 from rest_framework.decorators import action, api_view
 from . import models, serializer
 from .serializer import ConfigListSerializer, ConfigInformationSerializer, channelListSerializer, \
-    ConfigUpdateSerializer, sensorUpdateserializer
+    ConfigUpdateSerializer, sensorUpdateSerializer
 from .models import sensorConfig, channelConfig
 
 

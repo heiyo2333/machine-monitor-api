@@ -540,7 +540,6 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
                     'current_life': component.current_life,
                     'middle_value': component.middle_value,
                     "last_value": component.last_value,
-                    'sensor_name': sensor_names,
                     'remark': component.remark,
                 }
             )
