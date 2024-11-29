@@ -18,10 +18,6 @@ from rest_framework.authentication import BasicAuthentication
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from rest_framework.decorators import action, api_view
-from rest_framework import status
-import methodConfig
-from MachineMonitorApi import settings
-from methodConfig.models import componentConfig
 from . import models, serializer
 from .serializer import ConfigListSerializer, ConfigInformationSerializer, channelListSerializer, \
     ConfigUpdateSerializer, sensorUpdateserializer
@@ -416,9 +412,6 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         remark = self.request.data.get('remark')
         measurement = self.request.data.get('measurement')
         config_id = self.request.data.get('config_id')
-        # channel_name = self.request.data.get('channel_name')
-        # overrun_times = self.request.data.get('overrun_times')
-        # channel_field = self.request.data.get('channel_field')
 
         sensor_image_path = request.data.get('sensor_image')
         time_out = request.data.get('time_out')
@@ -471,7 +464,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     #传感器编辑
     @swagger_auto_schema(
         operation_summary='传感器-编辑',
-        request_body=serializer.sensorUpdateserializer,
+        request_body=serializer.sensorUpdateSerializer,
         responses={200: 'successful'},
         tags=["sensor"],
     )
@@ -656,7 +649,6 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     def channelConfigupdate(self, request):
         channel_id = self.request.data.get('id')
         channel_name = self.request.data.get('channel_name')
-        # channel_threshold = self.request.data.get('channel_threshold')
         channel_field = self.request.data.get('channel_field')
         remark = self.request.data.get('remark')
         unit = self.request.data.get('unit')
@@ -664,7 +656,6 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         if channels.exists():
             channel = channels.first()
             channel.channel_name = channel_name
-            # channel.channel_threshold = channel_threshold
             channel.channel_field = channel_field
             channel.remark = remark
             channel.unit = unit

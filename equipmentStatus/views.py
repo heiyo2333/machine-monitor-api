@@ -1,4 +1,6 @@
+import importlib
 import os
+import sys
 import time
 import struct
 import numpy as np
@@ -14,9 +16,13 @@ from rest_framework import viewsets
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.authentication import BasicAuthentication
 import socket
+
+import equipmentStatus.models
 import methodConfig
 import systemConfig
 # from media.AlgorithmFile.thresholdDetection import threshold_detection
+from media.AlgorithmFile.thresholdDetection import threshold_detection
+from methodConfig.models import algorithmConfig
 from methodConfig.views import get_local_ip
 from systemConfig.models import sensorConfig
 from . import models, serializer
@@ -24,101 +30,7 @@ from .models import thermalDiagram
 import threading
 
 
-# class DatabaseManager:
-#     def __init__(self):
-#         influxdb_ip = 'localhost'  # 时序数据库ip：默认用本地
-#         influxdb_port = 8086  # InfluxDB 服务器的端口，默认是 8086
-#         username = 'admin'  # 可选，如果设置了用户名和密码
-#         password = 'admin'  # 可选，如果设置了用户名和密码
-#         client = InfluxDBClient(host=influxdb_ip, port=influxdb_port, username=username, password=password)
-#         self.client = client
-#
-#     def createDatabase(self, new_database):
-#         self.client.create_database(new_database)
-#
-#     def connect_database(self, database_name):
-#         # 获取所有数据库的列表
-#         database_list = self.client.get_list_database()
-#         print('现有数据库列表:', database_list)
-#
-#         # 检查是否存在名为 'database_name' 的数据库
-#         if any(db['name'] == database_name for db in database_list):
-#             print(f"数据库 '{database_name}' 已存在。")
-#         else:
-#             print(f"数据库 '{database_name}' 不存在，正在创建数据库。")
-#             self.createDatabase(database_name)
-#
-#     def detect_sensor(self, ip, sensor_id, sensor_port, command_vibrate, time_out, receive_number, measurement, field_list):
-#         response_temp = b''
-#         while True:
-#             sensor = systemConfig.models.sensorConfig.objects.filter(id=sensor_id)
-#             if sensor.exists():
-#                 thread_flag = sensor.first().thread_flag
-#                 if thread_flag == 0:
-#                     break
-#             else:
-#                 return
-#             try:
-#                 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#                 client_socket.settimeout(time_out)
-#                 client_socket.connect((ip, sensor_port))
-#                 print(f"成功连接到 {ip}:{sensor_port}")
-#                 while True:
-#                     try:
-#                         client_socket.sendall(command_vibrate)
-#                         time.sleep(0.15)
-#                         response = client_socket.recv(receive_number)
-#                         if response == response_temp:
-#                             continue
-#                         response_temp = response
-#                         # 从响应中提取数据部分 (跳过前面3个字节: 从站地址、功能码、字节数;) # -2是为了去掉最后的CRC校验
-#                         data_section = response[3:-2]
-#                         # 每两个字节表示一个寄存器的值
-#                         if receive_number == 46:
-#                             registers = struct.unpack('>9H', data_section)  # '>'表示大端，'9H'表示9个无符号短整型数
-#                             # 将寄存器的值存储在一个列表中
-#                             registers_list = list(registers)
-#                             scaled_registers_list = [value / 100 for value in registers_list]
-#                         else:
-#                             registers = struct.unpack('>3I', data_section)  # '>'表示大端，'3I'表示3个无符号短整型数
-#                             # 将寄存器的值存储在一个列表中
-#                             registers_list = list(registers)
-#                             scaled_registers_list = [value / 100 for value in registers_list]
-#
-#                         field_dict = {}
-#                         for field, value in zip(field_list, scaled_registers_list):
-#                             field_dict[field] = value
-#                         point = [
-#                             {
-#                                 'measurement': measurement,
-#                                 'fields': field_dict
-#                             }]
-#                         self.client.write_points(point)
-#                     except Exception as e:
-#                         print(f"发生错误: {e}")
-#                         continue
-#             except socket.error as e:
-#                 print(f"无法连接到 {ip}:{sensor_port}，错误信息：{e}")
-#                 time.sleep(0.5)  # 重试前等待一段时间
-#
-#             finally:
-#                 client_socket.close()
-#
-#     def start_sensor_threads(self, sensors, ip):
-#         threads = []
-#         for sensor in sensors:
-#             t = threading.Thread(target=self.detect_sensor,
-#                                  args=(ip,
-#                                        sensor['sensor_id'],
-#                                        sensor['sensor_port'],
-#                                        sensor['command_code'],
-#                                        sensor['time_out'],
-#                                        sensor['receive_number'],
-#                                        sensor['measurement'],
-#                                        sensor['field_list'])
-#                                  )
-#             t.start()
-#             threads.append(t)
+
 def detect_sensor(client, ip, sensor_id, sensor_port, command_code, time_out, receive_number, measurement, field_list):
     response_temp = b''
     while True:
@@ -201,80 +113,6 @@ def connect_database(database_name):
     client_temp.close()
     return
 
-    # def detect_sensor(self, ip, sensor_id, sensor_port, command_code, time_out, receive_number, measurement, field_list):
-    #     response_temp = b''
-    #     while True:
-    #         sensor = systemConfig.models.sensorConfig.objects.filter(id=sensor_id)
-    #         if sensor.exists():
-    #             thread_flag = sensor.first().thread_flag
-    #             if thread_flag == 0:
-    #                 break
-    #         else:
-    #             return
-    #         try:
-    #             client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    #             client_socket.settimeout(time_out)
-    #             client_socket.connect((ip, sensor_port))
-    #             print(f"成功连接到 {ip}:{sensor_port}")
-    #             while True:
-    #                 try:
-    #                     client_socket.sendall(command_code)
-    #                     time.sleep(0.15)
-    #                     response = client_socket.recv(receive_number)
-    #                     if response == response_temp:
-    #                         continue
-    #                     response_temp = response
-    #                     # 从响应中提取数据部分 (跳过前面3个字节: 从站地址、功能码、字节数;) # -2是为了去掉最后的CRC校验
-    #                     data_section = response[3:-2]
-    #                     # 每两个字节表示一个寄存器的值
-    #                     if receive_number == 46:
-    #                         registers = struct.unpack('>9H', data_section)  # '>'表示大端，'9H'表示9个无符号短整型数
-    #                         # 将寄存器的值存储在一个列表中
-    #                         registers_list = list(registers)
-    #                         scaled_registers_list = [value / 100 for value in registers_list]
-    #                     else:
-    #                         registers = struct.unpack('>3I', data_section)  # '>'表示大端，'3I'表示3个无符号短整型数
-    #                         # 将寄存器的值存储在一个列表中
-    #                         registers_list = list(registers)
-    #                         scaled_registers_list = [value / 100 for value in registers_list]
-    #                         print('scaled_registers_list', scaled_registers_list)
-    #
-    #                     field_dict = {}
-    #                     for field, value in zip(field_list, scaled_registers_list):
-    #                         field_dict[field] = value
-    #                     point = [
-    #                         {
-    #                             'measurement': measurement,
-    #                             'fields': field_dict
-    #                         }]
-    #                     self.client.write_points(point)
-    #                 except Exception as e:
-    #                     print(f"发生错误: {e}")
-    #                     continue
-    #         except socket.error as e:
-    #             print(f"无法连接到 {ip}:{sensor_port}，错误信息：{e}")
-    #             time.sleep(0.5)  # 重试前等待一段时间
-    #
-    #         finally:
-    #             client_socket.close()
-
-    # def start_sensor_threads(self, sensors, ip):
-    #     threads = []
-    #     print(sensors)
-    #     for sensor in sensors:
-    #         t = threading.Thread(target=self.detect_sensor,
-    #                              args=(ip,
-    #                                    sensor['sensor_id'],
-    #                                    sensor['sensor_port'],
-    #                                    sensor['command_code'],
-    #                                    sensor['time_out'],
-    #                                    sensor['receive_number'],
-    #                                    sensor['measurement'],
-    #                                    sensor['field_list'])
-    #                              )
-    #         t.start()
-    #         threads.append(t)
-
 
 class EquipmentStatusViewSet(viewsets.GenericViewSet):
     authentication_classes = (BasicAuthentication,)
@@ -293,15 +131,14 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
             openapi.Parameter('config_id', openapi.IN_QUERY, description='配置id', type=openapi.TYPE_STRING,
                               required=True),
         ],
-        responses={200: openapi.Response('successful', serializer.equipmentStatusSerializer)},
+        responses={200: openapi.Response('successful', serializer.algorithmStatusListSerializer)},
         tags=["equipment"],
     )
     @action(detail=False, methods=['get'])
-    def equipmentStatusList(self, request):
+    def algorithmStatusList(self, request):
         config_id = self.request.query_params.get('config_id')
         algorithms = methodConfig.models.algorithmConfig.objects.filter(config_id=config_id)
-        machine_all = methodConfig.models.componentConfig.objects.filter(config_id=config_id)
-        total = machine_all.count()
+        total = algorithms.count()
         result_list = []
         for algorithm in algorithms:
             result_list.append(
@@ -309,11 +146,9 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
                     'id': algorithm.id,
                     'algorithm_name': algorithm.algorithm_name,
                     'algorithm_code': algorithm.algorithm_code,
-                    # 'component_name': algorithm.component_name,
-                    # 'component_code': x.component_code,
-                    # 'component_status': x.component_status,
+                    'algorithm_type': algorithm.algorithm_type,
+                    'function_name': algorithm.function_name,
                     'algorithm_monitor_status': algorithm.algorithm_monitor_status,
-                    # 'monitor_status': x.monitor_status,
                 }
             )
         response_list = {
@@ -332,63 +167,17 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
         operation_summary='开始监控',
         # 获取参数
         manual_parameters=[
-            openapi.Parameter('id', openapi.IN_QUERY, description='部件id', type=openapi.TYPE_INTEGER,
+            openapi.Parameter('id', openapi.IN_QUERY, description='算法id', type=openapi.TYPE_INTEGER,
                               required=True), ],
         responses={200: openapi.Response('successful')},
         tags=["equipment"],
     )
     @action(detail=False, methods=['get'])
     def monitorOn(self, request):
-        machine_id = self.request.query_params.get('id')
-        machine_status = methodConfig.models.componentConfig.objects.get(id=machine_id)
-        # machines = systemConfig.models.systemConfig.objects.filter(is_apply=1)
-        # if not machines.exists():
-        #     response = {
-        #         'status': 500,
-        #         'message': '机床未应用'
-        #     }
-        #     return JsonResponse(response)
-        #
-        # influxdb_name = machines.first().database_name
-        # machine_ip = machines.first().machine_ip
-        #
-        # connect_database(influxdb_name)
-        # client = InfluxDBClient(host='localhost', port=8086, username='admin', password='admin',
-        #                         database=influxdb_name)
-        # sensor_id = machineStatus.sensor_id
-        # sensor = systemConfig.models.sensorConfig.objects.get(id=sensor_id)
-        # channels = systemConfig.models.channelConfig.objects.filter(channel_id=sensor_id).order_by('id')
-        # field_list = []
-        #
-        # # 遍历所有符合条件的 channelConfig 对象，将其 field 字段加入 field_list
-        # for H in channels:
-        #     field_list.append(H.channel_field)  # 将 field 拼接到 field_list 中
-        #
-        # # detected_sensors = [
-        # #     {
-        # #         'sensor_id': sensor_id,
-        # #         'sensor_port': sensor.sensor_port,  # 假设传感器的Modbus端口
-        # #         'command_code': sensor.command_code,  # 这是一个示例的Modbus指令
-        # #         'time_out': sensor.time_out,  # 5秒超时
-        # #         'receive_number': sensor.receive_number,  # 预期接收46个字节
-        # #         'measurement': sensor.measurement,
-        # #         'field_list': field_list,
-        # #         # 对应的字段
-        # #     }
-        # # ]
-        # t = threading.Thread(target=detect_sensor, args=(client, machine_ip,
-        #                                              sensor_id,
-        #                                              sensor.sensor_port,
-        #                                              sensor.command_code,
-        #                                              sensor.time_out,
-        #                                              sensor.receive_number,
-        #                                              sensor.measurement,
-        #                                              field_list)).start()
-        # 执行监控算法
-
-        machine_status.monitor_status = True
-        # machineStatus.ident =t.ident
-        machine_status.save()
+        algorithm_id = self.request.query_params.get('id')
+        algorithm_status = methodConfig.models.algorithmConfig.objects.get(id=id)
+        algorithm_status.algorithm_monitor_status = True
+        algorithm_status.save()
         response = {
             'status': 200,
             'message': '开始监控成功'
@@ -400,25 +189,17 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
         operation_summary='结束监控',
         # 获取参数
         manual_parameters=[
-            openapi.Parameter('id', openapi.IN_QUERY, description='部件id', type=openapi.TYPE_INTEGER,
+            openapi.Parameter('id', openapi.IN_QUERY, description='算法id', type=openapi.TYPE_INTEGER,
                               required=True), ],
         responses={200: openapi.Response('successful')},
         tags=["equipment"],
     )
     @action(detail=False, methods=['get'])
     def monitorOff(self, request):
-        machine_id = self.request.query_params.get('id')
-        machine_status = methodConfig.models.componentConfig.objects.get(id=machine_id)
-        machines = systemConfig.models.systemConfig.objects.filter(is_apply=1)
-        if not machines.exists():
-            response = {
-                'status': 500,
-                'message': '机床未应用'
-            }
-            return JsonResponse(response)
-
-        machine_status.monitor_status = False
-        machine_status.save()
+        algorithm_id = self.request.query_params.get('id')
+        algorithm_status = methodConfig.models.algorithmConfig.objects.get(id=algorithm_id)
+        algorithm_status.algorithm_monitor_status = False
+        algorithm_status.save()
         response = {
             'status': 200,
             'message': '结束监控成功'
@@ -439,9 +220,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
     def monitorOnAll(self, request):
         config_id = self.request.query_params.get('config_id')
 
-        # 执行监控算法
-
-        methodConfig.models.componentConfig.objects.filter(config_id=config_id).update(monitor_status=True)
+        methodConfig.models.algorithmConfig.objects.filter(config_id=config_id).update(algorithm_monitor_status=True)
 
         response = {
             'status': 200,
@@ -463,10 +242,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
     def monitorOffAll(self, request):
         config_id = self.request.query_params.get('config_id')
 
-        # 结束监控算法
-
-        methodConfig.models.componentConfig.objects.filter(config_id=config_id).update(monitor_status=False,
-                                                                                       thread_flag=False)
+        methodConfig.models.algorithmConfig.objects.filter(config_id=config_id).update(algorithm_monitor_status=False)
 
         response = {
             'status': 200,
@@ -474,41 +250,6 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
         }
         return JsonResponse(response)
 
-    # # 设备数据
-    # @swagger_auto_schema(
-    #     operation_summary='设备数据',
-    #     # 获取参数
-    #     manual_parameters=[
-    #         openapi.Parameter('config_id', openapi.IN_QUERY, description='配置id', type=openapi.TYPE_INTEGER,
-    #                           required=True), ],
-    #     responses={200: openapi.Response('successful', serializer.equipmentDataSerializer)},
-    #     tags=["equipment"],
-    # )
-    # @action(detail=False, methods=['get'])
-    # def equipmentData(self, request):
-    #     config_id = self.request.query_params.get('config_id')
-    #
-    #     # 读取当前机床温度，功率，主轴加速度
-    #     a = methodConfig.models.systemConfig.objects.get(config_id=config_id)
-    #
-    #     result_list = [{
-    #         'config_id': a.config_id,
-    #         'temp': a.temp,
-    #         'temp_min': a.temp_min,
-    #         'temp_max': a.temp_max,
-    #         'power': a.power,
-    #         'power_min': a.power_min,
-    #         'power_max': a.power_max,
-    #         'acceleration': a.acceleration,
-    #         'acceleration_min': a.acceleration_min,
-    #         'acceleration_max': a.acceleration_max,
-    #     }]
-    #     response = {
-    #         'data': result_list,
-    #         'status': 200,
-    #         'message': '设备运行数据查询成功！',
-    #     }
-    #     return JsonResponse(response)
 
     # 部件-传感器下拉框
     @swagger_auto_schema(
@@ -541,9 +282,9 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
         }
         return JsonResponse(response)
 
-    # 传感器通道信息
+    # 机床部件状态
     @swagger_auto_schema(
-        operation_summary='传感器通道信息',
+        operation_summary='机床部件状态',
         # 获取参数
         manual_parameters=[
             openapi.Parameter('config_id', openapi.IN_QUERY, description='配置id', type=openapi.TYPE_INTEGER,
@@ -552,23 +293,21 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
         tags=["equipment"],
     )
     @action(detail=False, methods=['get'])
-    def sensorData(self, request):
+    def componentStatus(self, request):
         config_id = self.request.query_params.get('config_id')
         components = methodConfig.models.componentConfig.objects.filter(config_id=config_id)
         result_list = []
         for component in components:
-            component_sensors = methodConfig.models.componentSensor.objects.filter(component_id=component.id)
-            for i in component_sensors:
-                sensor = i.sensor_id
-                if "三相加速度" in systemConfig.models.sensorConfig.objects.get(id=sensor).sensor_name:
-                    a = systemConfig.models.sensorConfig.objects.get(id=sensor)
-                    result_list.append({
-                        'id': a.id,
-                        'component_name': component.component_name,
-                        'sensor_name': a.sensor_name,
-                        'overrun_times': a.overrun_times,
-                        'status': a.operational_status,
-                    })
+            status = methodConfig.models.componentAlgorithmRecord.objects.filter(component_id=component.id,
+                                                                                 algorithm_type=0).order_by(
+                '-id').first()
+            result_list.append({
+                'id': status.id,
+                'component_name': status.component_name,
+                'sensor_name': status.sensor_name,
+                'overrun_times': status.value1,
+                'status': status.value2,
+            })
         response_list = {
             'list': result_list,
             'total': len(components)
@@ -576,28 +315,28 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
         response = {
             'data': response_list,
             'status': 200,
-            'message': '传感器通道信息获取成功！',
+            'message': '机床部件状态获取成功！',
         }
         return JsonResponse(response)
 
-    # 查询警告及故障代码
+    # 报警记录
     @swagger_auto_schema(
-        operation_summary='警告及故障代码查询',
+        operation_summary='报警记录',
         # 获取参数
         manual_parameters=[
             openapi.Parameter('config_id', openapi.IN_QUERY, description='配置id', type=openapi.TYPE_INTEGER,
                               required=True),
         ],
-        responses={200: openapi.Response('successful', serializer.faultCodeSerializer)},
+        responses={200: openapi.Response('successful', serializer.faultInformationSerializer)},
         tags=["equipment"],
     )
     @action(detail=False, methods=['get'])
-    def faultCodeList(self, request):
+    def faultInformationList(self, request):
         config_id = self.request.query_params.get('config_id')
-        machineConfig = models.faultCode.objects.filter(config_id=config_id)
-        total = machineConfig.count()
+        faults = models.faultInformation.objects.filter(config_id=config_id)
+        total = faults.count()
         result_list = []
-        for x in machineConfig:
+        for x in faults:
             result_list.append(
                 {
                     "id": x.id,
@@ -608,7 +347,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
                     'component_id': x.component_id,
                     'component_name': x.component_name,
                     'fault_type': x.fault_type,
-                    'fault_code': x.fault_code
+                    'fault_status': x.fault_status
                 }
             )
         response_list = {
@@ -618,7 +357,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
         response = {
             'data': response_list,
             'status': 200,
-            'message': '警告及故障代码获取成功！',
+            'message': '报警记录获取成功！',
         }
         return JsonResponse(response)
 
@@ -842,36 +581,6 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
         }
         return JsonResponse(response)
 
-    # 警告及故障代码填写
-    @swagger_auto_schema(
-        operation_summary='警告及故障代码填写',
-        request_body=serializer.addFaultCodeSerializer,
-        responses={200: '警告及故障代码填写成功'},
-        tags=["equipment"],
-    )
-    @action(detail=False, methods=['post'])
-    def addFaultCode(self, request):
-        component_id = self.request.data.get('component_id')
-        component = methodConfig.models.componentConfig.objects.get(id=component_id)
-        warning_time = self.request.data.get('warning_time')  # 警告时间
-        fault_type = self.request.data.get('fault_type')  # 报警类型
-        fault_code = self.request.data.get('fault_code')  # 报警代码
-
-        new_faultCode = models.faultCode.objects.create(config_id=component.config_id,
-                                                        machine_code=component.machine_code,
-                                                        machine_name=component.machine_name,
-                                                        warning_time=warning_time,
-                                                        component_id=component_id,
-                                                        component_name=component.component_name,
-                                                        fault_type=fault_type,
-                                                        fault_code=fault_code, )
-        response = {
-            'id': new_faultCode.id,
-            'status': 200,
-            'message': '警告及故障代码填写成功'
-        }
-        return JsonResponse(response)
-
     # 机床参数查询
     @swagger_auto_schema(
         operation_summary='机床参数查询',
@@ -939,14 +648,17 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
     def remainingLife(self, request):
         component_id = self.request.query_params.get('component_id')
         c = methodConfig.models.componentConfig.objects.get(id=component_id)
-        if c.x_axis and c.y_pre_axis and c.y_last_axis:
+        if methodConfig.models.componentAlgorithmRecord.objects.filter(component_id=component_id,
+                                                                       algorithm_type=1).order_by('-id').exists():
+            life = methodConfig.models.componentAlgorithmRecord.objects.filter(component_id=component_id,
+                                                                               algorithm_type=1).order_by('-id').first()
             data = {
-                'id':c.id,
-                'x_axis':c.x_axis,
-                'y_pre_axis':c.y_pre_axis,
-                'y_last_axis':c.y_last_axis,
-                'middle_value':c.middle_value,
-                'last_value':c.last_value,
+                'id': life.id,
+                'x_axis': life.value1,
+                'y_pre_axis': life.value2,
+                'y_last_axis': life.value3,
+                'middle_value': c.middle_value,
+                'last_value': c.last_value,
             }
             response = {
                 "status": 200,
@@ -954,15 +666,15 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
                 "data": data
             }
         else:
-             response = {
+            response = {
                 'status': 500,
                 'message': '暂无剩余寿命曲线数据！'
             }
         return JsonResponse(response)
 
-    # 部件监控接口
+    # 算法监控接口
     @swagger_auto_schema(
-        operation_summary='部件监控',
+        operation_summary='算法监控',
         # 获取参数
         manual_parameters=[
             openapi.Parameter('config_id', openapi.IN_QUERY, description='配置id', type=openapi.TYPE_INTEGER,
@@ -971,34 +683,124 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
         tags=["equipment"],
     )
     @action(detail=False, methods=['get'])
-    def equipmentMonitor(self, request):
+    def algorithmMonitor(self, request):
         config_id = self.request.query_params.get('config_id')
-        components = methodConfig.models.componentConfig.objects.filter(config_id=config_id, monitor_status=True)
-        date = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
-        for component in components:
-            sensors = methodConfig.models.componentSensor.objects.filter(component_id=component.id)
-            s1 = None
-            s2 = None
-            for i in sensors:
-                s = i.sensor_id
-                if "电流" in systemConfig.models.sensorConfig.objects.get(id=s).sensor_name:
-                    s1 = s
-                elif "三相加速度" in systemConfig.models.sensorConfig.objects.get(id=s).sensor_name:
-                    s2 = s
-            cur = systemConfig.models.sensorConfig.objects.get(id=s1).measurement
-            vib = systemConfig.models.sensorConfig.objects.get(id=s2).measurement
-            overrun_times = threshold_detection(cur=cur, vib=vib, date=date)
-            if 0 <= overrun_times < 30:
-                operational_status = 0
-            elif 30 <= overrun_times < 100:
-                operational_status = 1
+        algorithms = methodConfig.models.algorithmConfig.objects.filter(config_id=config_id,
+                                                                        algorithm_monitor_status=True)
+
+        for algorithm in algorithms:
+
+            name = algorithm.function_name
+            algorithm_path = algorithm.algorithm_file.path
+            # 已知模块地址和函数名
+            module_path = f'media/{algorithm_path}'  # 模块文件的路径
+            function_name = name  # 函数名
+
+            # 获取模块文件名（不包括.py扩展名）
+            module_name = module_path.split('/')[-1].split('.')[0]
+
+            # 动态导入模块
+            spec = importlib.util.spec_from_file_location(module_name, module_path)
+            if spec is None:
+                raise ImportError(f"Could not find module at {module_path}")
+
+            module = importlib.util.module_from_spec(spec)
+            if module is None:
+                raise ImportError(f"Could not create module from spec for {module_path}")
+
+            sys.modules[module_name] = module  # 将模块添加到sys.modules中
+            spec.loader.exec_module(module)  # 执行模块
+
+            # 调用函数
+            try:
+                algorithm_function = getattr(module, function_name)
+            except AttributeError:
+                raise AttributeError(f"The function {function_name} does not exist in the module {module_name}")
+
+
+            channels = methodConfig.models.algorithmChannel.objects.filter(algorithm_id=algorithm.id)
+            args1 = ()
+            for channel in channels:
+                args1 += (channel.channel_id,)
+            s_id = 0
+            sensors = systemConfig.models.channelConfig.objects.filter(id__in=args1)
+            for sensor in sensors:
+                if "三相加速度" in systemConfig.models.sensorConfig.objects.get(id=sensor.sensor_id).sensor_name:
+                    s_id = sensor.sensor_id
+            c = methodConfig.models.componentSensor.objects.filter(sensor_id=s_id).first()
+            component = methodConfig.models.componentConfig.objects.get(id=c.component_id)
+            sensor_name = systemConfig.models.sensorConfig.objects.get(id=s_id).sensor_name
+            config_id = component.config_id
+            machine = systemConfig.models.systemConfig.objects.get(id=config_id)
+
+            if algorithm.algorithm_type == 0:
+                overrun_times, operational_status = algorithm_function(*args1)
+                if operational_status == 2:
+                    count = 0
+                    a = methodConfig.models.componentAlgorithmRecord.objects.filter(component_id=component.id,
+                                                                                  algorithm_type=0).order_by('-id')[:15]
+                    for i in a:
+                        if i.value2 == 2:
+                            count += 1
+                    if count >= 10:
+                        operational_status = 3
+
+                methodConfig.models.componentAlgorithmRecord.objects.create(component_id=component.id,
+                                                                          component_name=component.component_name,
+                                                                          algorithm_type=algorithm.algorithm_type,
+                                                                          date=datetime.now().date(),
+                                                                          sensor_name=sensor_name, value1=overrun_times,
+                                                                          value2=operational_status)
+
+                if operational_status == 2:
+                    equipmentStatus.models.faultInformation.objects.create(config_id=config_id,
+                                                                           machine_code=machine.machine_code,
+                                                                           machine_name=machine.machine_name,
+                                                                           warning_time=datetime.now().date(),
+                                                                           component_id=component.id,
+                                                                           component_name=component.component_name,
+                                                                           fault_type='故障', fault_status='异常')
+
+                elif operational_status == 3:
+                    equipmentStatus.models.faultInformation.objects.create(config_id=config_id,
+                                                                           machine_code=machine.machine_code,
+                                                                           machine_name=machine.machine_name,
+                                                                           warning_time=datetime.now().date(),
+                                                                           component_id=component.id,
+                                                                           component_name=component.component_name,
+                                                                           fault_type='故障', fault_status='损坏')
+
             else:
-                operational_status = 2
-            systemConfig.models.sensorConfig.objects.filter(id=s2).update(overrun_times=overrun_times,
-                                                                       operational_status=operational_status)
+                x_axis, y_pre_axis, y_last_axis, current_life = algorithm_function(*args1)
+                methodConfig.models.componentAlgorithmRecord.objects.create(component_id=component.id,
+                                                                          component_name=component.component_name,
+                                                                          algorithm_type=algorithm.algorithm_type,
+                                                                          date=datetime.now().date(),
+                                                                          sensor_name=sensor_name, value1=x_axis,
+                                                                          value2=y_pre_axis, value3=y_last_axis,
+                                                                          value4=current_life)
+                methodConfig.models.componentConfig.objects.filter(id =component.id).update(current_life = current_life)
+
+                if component.middle_value >= current_life > component.last_value:
+                    equipmentStatus.models.faultInformation.objects.create(config_id=config_id,
+                                                                           machine_code=machine.machine_code,
+                                                                           machine_name=machine.machine_name,
+                                                                           warning_time=datetime.now().date(),
+                                                                           component_id=component.id,
+                                                                           component_name=component.component_name,
+                                                                           fault_type='寿命', fault_status='中期')
+
+                elif current_life <= component.last_value:
+                    equipmentStatus.models.faultInformation.objects.create(config_id=config_id,
+                                                                           machine_code=machine.machine_code,
+                                                                           machine_name=machine.machine_name,
+                                                                           warning_time=datetime.now().date(),
+                                                                           component_id=component.id,
+                                                                           component_name=component.component_name,
+                                                                           fault_type='寿命', fault_status='末期')
 
         response = {
             'status': 200,
-            'message': '部件监控成功'
+            'message': '算法监控成功！'
         }
         return JsonResponse(response)

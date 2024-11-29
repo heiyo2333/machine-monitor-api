@@ -1,17 +1,18 @@
 from rest_framework import serializers
 
 
-# 设备运行状况查询
-class equipmentStatusSerializer(serializers.Serializer):
+# 算法运行状态
+class algorithmStatusListSerializer(serializers.Serializer):
     id = serializers.IntegerField(help_text="id")
-    component_code = serializers.CharField(help_text="部件编号", max_length=32)  # 部件编号
-    component_name = serializers.CharField(help_text="部件名称", max_length=32)  # 部件名称
-    component_status = serializers.CharField(help_text="部件运行状态", max_length=32)  # 部件运行状态
-    monitor_status = serializers.BooleanField(help_text="是否监测")  # 监测状态
+    algorithm_code = serializers.CharField(help_text="算法编码", max_length=32)  # 算法编号
+    algorithm_name = serializers.CharField(help_text="算法名称", max_length=32)  # 算法名称
+    algorithm_type = serializers.IntegerField(null=True) # 算法类型：0--故障诊断，1--寿命预测
+    function_name = serializers.CharField(help_text="算法函数名称", max_length=32)  # 算法函数名称
+    algorithm_monitor_status = serializers.BooleanField(help_text="是否监测")  # 算法监测状态
 
 
-# 警告及故障代码查询
-class faultCodeSerializer(serializers.Serializer):
+# 报警记录
+class faultInformationSerializer(serializers.Serializer):
     id = serializers.IntegerField(help_text="id")
     config_id = serializers.IntegerField(help_text="机床配置id")
     machine_code = serializers.CharField(help_text="机床编号", max_length=32)  # 机床编号
@@ -19,23 +20,8 @@ class faultCodeSerializer(serializers.Serializer):
     warning_time = serializers.CharField(help_text="警告时间", max_length=32)  # 警告时间
     component_name = serializers.CharField(help_text="部件名称", max_length=32)  # 部件名称
     fault_type = serializers.CharField(help_text="报警类型", max_length=32)  # 报警类型
-    fault_code = serializers.CharField(help_text="报警代码", max_length=32)  # 报警代码
+    fault_status = serializers.CharField(help_text="报警代码", max_length=32)  # 报警状态
 
-
-# 警告及故障代码填写
-class addFaultCodeSerializer(serializers.Serializer):
-    component_id = serializers.IntegerField(help_text="部件id")
-    warning_time = serializers.CharField(help_text="警告时间", max_length=32)  # 警告时间
-    fault_type = serializers.CharField(help_text="报警类型", max_length=32)  # 报警类型
-    fault_code = serializers.CharField(help_text="报警代码", max_length=32)  # 报警代码
-
-
-# # 警告及故障代码查找
-# class findFaultCodeSerializer(serializers.Serializer):
-#     component_id = serializers.IntegerField(help_text="部件id")
-#     warning_time = serializers.CharField(help_text="警告时间", max_length=32)  # 警告时间
-#     fault_type = serializers.CharField(help_text="报警类型", max_length=32)  # 报警类型
-#     fault_code = serializers.CharField(help_text="报警代码", max_length=32)  # 报警代码
 
 
 # 机床加工热力图

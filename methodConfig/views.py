@@ -35,13 +35,6 @@ def get_local_ip():
     return local_ip
 
 
-# def get_initials(chinese_str):
-#     # 将中文转换为拼音列表
-#     pinyin_list = lazy_pinyin(chinese_str, style=Style.INITIALS)
-#     # 提取每个拼音的首字母并转换为大写
-#     initials = ''.join([item[0].upper() for item in pinyin_list])
-#     return initials
-
 
 def get_initials(name):
     # 将算法名称转换为拼音
@@ -53,8 +46,8 @@ def get_initials(name):
     return initials
 
 
-def algorithm_code_rule(algorithm_name):
-    prefix = f'SF-{get_initials(algorithm_name)}-'
+def algorithm_code_rule(algorithm_name,algorithm_type):
+    prefix = f'SF-{get_initials(algorithm_name)}-{algorithm_type}'
     # 获取已存在的最大编码值
     max_existing_number = models.algorithmConfig.objects.filter(algorithm_code__startswith=prefix).aggregate(
         Max('algorithm_code'))
@@ -120,18 +113,11 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
     # 部件配置-算法输入通道
     @swagger_auto_schema(
         operation_summary='算法配置-算法输入通道多级下拉',
-        # 获取参数
-        # manual_parameters=[
-        #     openapi.Parameter('id', openapi.IN_QUERY, description='系统配置id', type=openapi.TYPE_INTEGER,
-        #                       required=True),
-        # ],
         responses={200: openapi.Response('successful')},
         tags=["algorithm"]
     )
     @action(detail=False, methods=['get'])
     def algorithmChannelSelect(self, request):
-        # config_id = self.request.query_params.get("id")
-        # component_query = Q(component_status=True) & Q(config_id=config_id)
         config_id = systemConfig.models.systemConfig.objects.get(is_apply=1).id
         components = models.componentConfig.objects.filter(component_status=True, config_id=config_id)
         request_list = []
@@ -203,11 +189,6 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         for algorithm in algorithms:
             algorithm_channels_list = []
             algorithm_channels = models.algorithmChannel.objects.filter(algorithm_id=algorithm.id)
-            # algorithm_list = {
-            #     'value': algorithm.id,
-            #     'label': algorithm.algorithm_name,
-            #     'children': []
-            # }
             for algorithm_channel in algorithm_channels:
                 channel = systemConfig.models.channelConfig.objects.get(id=algorithm_channel.channel_id)
                 sensor = systemConfig.models.sensorConfig.objects.get(id=channel.sensor_id)
@@ -241,6 +222,9 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
                     'remark': algorithm.remark,
                     'algorithm_file': ip_address + algorithm.algorithm_file.url,
                     # 'algorithm_file': os.path.basename(x.algorithm_file.name),
+                    'algorithm_type': algorithm.algorithm_type,
+                    'function_name': algorithm.function_name,
+                    'algorithm_monitor_status': algorithm.algorithm_monitor_status,
                 }
             )
         response_list = {
@@ -268,14 +252,18 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         algorithm_file_path = self.request.data.get('algorithm_file')
         algorithm_channel_str = self.request.data.get('algorithm_channel_matrix')
         remark = self.request.data.get('remark')
+        algorithm_type = self.request.data.get('algorithm_type')
+        function_name = self.request.data.get('function_name')
 
         algorithm_channel_matrix = ast.literal_eval(algorithm_channel_str)
         config_id = systemConfig.models.systemConfig.objects.get(is_apply=1).id
-        algorithm_code = algorithm_code_rule(algorithm_name)
+        algorithm_code = algorithm_code_rule(algorithm_name,algorithm_type)
         new_algorithm = models.algorithmConfig.objects.create(algorithm_code=algorithm_code,
                                                               algorithm_name=algorithm_name,
                                                               algorithm_channel_number=algorithm_channel_number,
                                                               remark=remark,
+                                                              algorithm_type=algorithm_type,
+                                                              function_name = function_name,
                                                               config_id=config_id,)
         # 将对应的通道信息放入附表
         for channael_id in algorithm_channel_matrix:
@@ -290,12 +278,7 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         # 更新algorithm_file字段
         algorithm.algorithm_file.save(f'{algorithm_code}.py', file_obj, save=True)
 
-        # 生成新的文件名
-        # new_filename = f"{algorithm_code}.py"
-        #
-        # # 将新文件保存到本地文件系统和数据库中
-        # m.algorithm_file.save(new_filename, algorithm_file, save=True)
-        # m.save()
+
 
         response = {
             'status': 200,
@@ -341,6 +324,8 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         remark = self.request.data.get('remark')
         algorithm_file_path = self.request.data.get('algorithm_file')
         algorithm_channel_str = self.request.data.get('algorithm_channel_matrix')
+        algorithm_type = self.request.data.get('algorithm_type')
+        function_name = self.request.data.get('function_name')
 
         algorithm = models.algorithmConfig.objects.get(id=algorithm_id)
         algorithm_code = algorithm.algorithm_code
@@ -352,12 +337,14 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
                 }
                 return JsonResponse(response)
             else:
-                algorithm_code = algorithm_code_rule(algorithm_name)
+                algorithm_code = algorithm_code_rule(algorithm_name,algorithm_type)
 
         algorithm.algorithm_name = algorithm_name
         algorithm.algorithm_code = algorithm_code
         algorithm.algorithm_channel_number = algorithm_channel_number
         algorithm.remark = remark
+        algorithm.algorithm_type = algorithm_type
+        algorithm.function_name = function_name
         algorithm.save()
 
         algorithm_channels = models.algorithmChannel.objects.filter(algorithm_id=algorithm_id)
@@ -376,16 +363,6 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         file_path = algorithm.algorithm_file.path
         if os.path.exists(file_path):
             os.remove(file_path)
-        # else的内容可以不用
-        # else:
-        #     response = {
-        #         'status': 500,
-        #         'message': '该算法文件不存在'
-        #     }
-        #
-        #     return JsonResponse(response)
-        # if n.algorithm_file:
-        #     os.remove(n.algorithm_file.path)
 
         # 从URL下载文件内容
         response = requests.get(algorithm_file_path)
@@ -404,15 +381,35 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
 
         return JsonResponse(response)
 
-    # 算法配置-算法模板文件下载
+    # 算法配置-故障算法模板文件下载
     @swagger_auto_schema(
-        operation_summary='算法配置-算法模板文件下载',
-        responses={200: '算法模板文件下载成功！'},
+        operation_summary='算法配置-故障算法模板文件下载',
+        responses={200: '故障算法模板文件下载成功！'},
         tags=['algorithm']
     )
     @action(detail=False, methods=['get'])
-    def downloadTemplate(self, request):
-        file_path = 'media/AlgorithmTemplateFile/SF-Template.py'
+    def downloadTemplateGz(self, request):
+        file_path = 'media/AlgorithmTemplateFile/SF-GZ-Template.py'
+        file_name = os.path.basename(file_path)
+
+        # 设置响应头
+        response = HttpResponse(content_type='application/octet-stream')
+        response['Content-Disposition'] = 'attachment; filename={}'.format(urlquote(file_name))
+
+        with open(file_path, 'rb') as file:
+            response.write(file.read())
+
+        return response
+
+    # 算法配置-寿命算法模板文件下载
+    @swagger_auto_schema(
+        operation_summary='算法配置-寿命算法模板文件下载',
+        responses={200: '寿命算法模板文件下载成功！'},
+        tags=['algorithm']
+    )
+    @action(detail=False, methods=['get'])
+    def downloadTemplateSm(self, request):
+        file_path = 'media/AlgorithmTemplateFile/SF-SM-Template.py'
         file_name = os.path.basename(file_path)
 
         # 设置响应头
@@ -540,6 +537,10 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
                     'component_name': component.component_name,
                     'component_code': component.component_code,
                     'sensor_list': sensor_list,
+                    'current_life': component.current_life,
+                    'middle_value': component.middle_value,
+                    "last_value": component.last_value,
+                    'sensor_name': sensor_names,
                     'remark': component.remark,
                 }
             )
@@ -566,6 +567,9 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         config_id = self.request.data.get('config_id')
         component_name = self.request.data.get('component_name')
         remark = self.request.data.get('remark')
+        current_life = self.request.data.get('current_life')
+        middle_value = self.request.data.get('middle_value')
+        last_value = self.request.data.get('last_value')
         sensor_id_str = self.request.data.get('sensor_id')
         sensor_id_matrix = ast.literal_eval(sensor_id_str)
 
@@ -580,6 +584,9 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         component = models.componentConfig.objects.create(config_id=config_id,
                                                           component_name=component_name,
                                                           component_code=component_code,
+                                                          current_life=current_life,
+                                                          middle_value=middle_value,
+                                                          last_value=last_value,
                                                           remark=remark)
         # 创建该部件对应的传感器id附表
         for sensor_id in sensor_id_matrix:
@@ -605,6 +612,9 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         component_name = self.request.data.get('component_name')
         remark = self.request.data.get('remark')
         sensor_id_str = self.request.data.get('sensor_id')
+        current_life= self.request.data.get('current_life')
+        middle_value= self.request.data.get('middle_value')
+        last_value= self.request.data.get('last_value')
 
         machine = systemConfig.models.systemConfig.objects.get(id=config_id)
         component = models.componentConfig.objects.get(id=component_id)
@@ -642,6 +652,9 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
 
         component.component_code = component_code
         component.component_name = component_name
+        component.current_life =current_life
+        component.middle_value =middle_value
+        component.last_value =last_value
         component.remark = remark
         component.save()
 
@@ -709,67 +722,67 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         }
         return JsonResponse(response)
 
-    # 部件配置-通道下拉框
-    @swagger_auto_schema(
-        operation_summary='部件配置-通道下拉框',
-        manual_parameters=[
-            openapi.Parameter('sensor_id', openapi.IN_QUERY, description='传感器id', type=openapi.TYPE_INTEGER,
-                              required=True), ],
-        responses={200: 'Successful'},
-        tags=["component"], )
-    @action(detail=False, methods=['get'])
-    def channelSelect(self, request):
-        sensor_id = self.request.query_params.get('sensor_id')
-        channels = systemConfig.models.channelConfig.objects.filter(sensor=sensor_id)
-        if channels.count() == 0:
-            response = {
-                'message': '该传感器下没有通道',
-                'status': 500
-            }
-            return JsonResponse(response)
-        request_list = []
-        for i in channels:
-            request_list.append({
-                'id': i.id,
-                'channel_name': i.channel_name,
-            })
+    # # 部件配置-通道下拉框
+    # @swagger_auto_schema(
+    #     operation_summary='部件配置-通道下拉框',
+    #     manual_parameters=[
+    #         openapi.Parameter('sensor_id', openapi.IN_QUERY, description='传感器id', type=openapi.TYPE_INTEGER,
+    #                           required=True), ],
+    #     responses={200: 'Successful'},
+    #     tags=["component"], )
+    # @action(detail=False, methods=['get'])
+    # def channelSelect(self, request):
+    #     sensor_id = self.request.query_params.get('sensor_id')
+    #     channels = systemConfig.models.channelConfig.objects.filter(sensor=sensor_id)
+    #     if channels.count() == 0:
+    #         response = {
+    #             'message': '该传感器下没有通道',
+    #             'status': 500
+    #         }
+    #         return JsonResponse(response)
+    #     request_list = []
+    #     for i in channels:
+    #         request_list.append({
+    #             'id': i.id,
+    #             'channel_name': i.channel_name,
+    #         })
+    #
+    #     response = {
+    #         'list': request_list,
+    #         'total': channels.count(),
+    #     }
+    #     response = {
+    #         'data': response,
+    #         'message': 'Successful',
+    #         'status': 200,
+    #     }
+    #     return JsonResponse(response)
 
-        response = {
-            'list': request_list,
-            'total': channels.count(),
-        }
-        response = {
-            'data': response,
-            'message': 'Successful',
-            'status': 200,
-        }
-        return JsonResponse(response)
-
-    # 部件配置-算法选择下拉框
-    @swagger_auto_schema(
-        operation_summary='部件配置-算法选择下拉框',
-        responses={200: 'Successful'},
-        tags=["component"], )
-    @action(detail=False, methods=['get'])
-    def algorithmSelect(self, request):
-        query = models.algorithmConfig.objects.all()
-        request_list = []
-        for i in query:
-            request_list.append({
-                'id': i.id,
-                'algorithm_name': i.algorithm_name,
-                'algorithm_channel_number': i.algorithm_channel_number,
-            })
-        response_list = {
-            'list': request_list,
-            'total': query.count(),
-        }
-        response = {
-            'data': response_list,
-            'message': 'Successful',
-            'status': 200,
-        }
-        return JsonResponse(response)
+    # # 部件配置-算法选择下拉框
+    # @swagger_auto_schema(
+    #     operation_summary='部件配置-算法选择下拉框',
+    #     responses={200: 'Successful'},
+    #     tags=["component"], )
+    # @action(detail=False, methods=['get'])
+    # def algorithmSelect(self, request):
+    #     query = models.algorithmConfig.objects.all()
+    #     request_list = []
+    #     for i in query:
+    #         request_list.append({
+    #             'id': i.id,
+    #             'algorithm_name': i.algorithm_name,
+    #             'algorithm_channel_number': i.algorithm_channel_number,
+    #         })
+    #     response_list = {
+    #         'list': request_list,
+    #         'total': query.count(),
+    #     }
+    #     response = {
+    #         'data': response_list,
+    #         'message': 'Successful',
+    #         'status': 200,
+    #     }
+    #     return JsonResponse(response)
 
     # 信号展示-多重下拉框
     @swagger_auto_schema(
