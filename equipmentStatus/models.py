@@ -3,7 +3,7 @@ from django.utils import timezone
 
 
 # 警告及故障代码
-class faultCode(models.Model):
+class faultInformation(models.Model):
     config_id = models.IntegerField(null=True)  # 机床配置id
     machine_code = models.CharField(max_length=32, null=True)  # 机床编号
     machine_name = models.CharField(max_length=32, null=True)  # 机床名称
@@ -11,7 +11,7 @@ class faultCode(models.Model):
     component_id = models.IntegerField(null=True)  # 部件id
     component_name = models.CharField(max_length=32, null=True)  # 部件名称
     fault_type = models.CharField(max_length=32, null=False)  # 报警类型
-    fault_code = models.CharField(max_length=32, null=False)  # 报警代码
+    fault_status  = models.CharField(max_length=32, null=False)  # 报警代码
 
 
 # 加工热力图

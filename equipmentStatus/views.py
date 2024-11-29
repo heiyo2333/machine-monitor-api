@@ -16,7 +16,7 @@ from rest_framework.authentication import BasicAuthentication
 import socket
 import methodConfig
 import systemConfig
-from media.AlgorithmFile.thresholdDetection import threshold_detection
+# from media.AlgorithmFile.thresholdDetection import threshold_detection
 from methodConfig.views import get_local_ip
 from systemConfig.models import sensorConfig
 from . import models, serializer

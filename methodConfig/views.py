@@ -666,8 +666,8 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['post'])
     def componentDelete(self, request):
-        id = self.request.data.get('id')
-        component = models.componentConfig.objects.filter(id=id)
+        component_id = self.request.data.get('id')
+        # component = models.componentConfig.objects.filter(id=component_id)
         # 等会儿还原回来
         # if component.first().monitor_status:
         #     response = {
@@ -676,7 +676,7 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         #     }
         # else:
         #     models.componentConfig.objects.filter(id=id).delete()
-        models.componentConfig.objects.filter(component_id=id).delete()
+        models.componentConfig.objects.filter(id=component_id).delete()
 
         response = {
             'status': 200,

@@ -29,8 +29,8 @@ class sensorConfig(models.Model):
     measurement = models.CharField(max_length=32, null=True)  # 传感器数据库字段
     remark = models.CharField(max_length=32, null=True)  # 备注
     sensor_status = models.BooleanField(default=0)  # 状态 1：开启 0：关闭
-    operational_status = models.IntegerField(default=0)  # 传感器--部件状况 0：正常（绿色）1：预警（黄色）2：异常（红色）
-    overrun_times = models.IntegerField(default=0)  # 超限次数
+    # operational_status = models.IntegerField(default=0)  # 传感器--部件状况 0：正常（绿色）1：预警（黄色）2：异常（红色）
+    # overrun_times = models.IntegerField(default=0)  # 超限次数
     thread_flag = models.BooleanField(default=0)  # 多线程标志位
     time_out = models.IntegerField(null=True)  # 超时时间
     receive_number = models.IntegerField(null=True)  # 接收数据数量
@@ -48,8 +48,8 @@ class channelConfig(models.Model):
     # overrun_times = models.IntegerField(null=True)  # 超限次数
     unit = models.CharField(max_length=32, null=True)  # 单位
     channel_field = models.CharField(max_length=32, null=True)  # 对应字段
-    is_monitor = models.BooleanField(default=False)  # 是否监控
-    channel_status = models.IntegerField(default=0)  # 通道状态 0：正常（绿色）1：预警（黄色）2：异常（红色）
+    # is_monitor = models.BooleanField(default=False)  # 是否监控
+    # channel_status = models.IntegerField(default=0)  # 通道状态 0：正常（绿色）1：预警（黄色）2：异常（红色）
     sensor = models.ForeignKey(sensorConfig, db_constraint=True, on_delete=models.CASCADE)  # 外键
     remark = models.CharField(max_length=32, null=True)  # 备注
 
@@ -65,6 +65,6 @@ class influxDataConfig(models.Model):
 #     name = models.CharField(max_length=4, null=True)  # 名称
 #     value = models.CharField(max_length=4, null=True)  # 值
 #     type = models.CharField(max_length=4, null=True)  # 类型
-class sensorStatusContext(models.Model):
-    type = models.CharField(max_length=32, null=True)  # 状态类型：是否配置
-    value = models.CharField(max_length=32, null=True)  # 状态名称
+# class sensorStatusContext(models.Model):
+#     type = models.CharField(max_length=32, null=True)  # 状态类型：是否配置
+#     value = models.CharField(max_length=32, null=True)  # 状态名称

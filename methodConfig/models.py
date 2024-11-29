@@ -11,6 +11,8 @@ class algorithmConfig(models.Model):
     algorithm_file = models.FileField(upload_to='AlgorithmFile/', null=True)  # 算法文件
     remark = models.CharField(max_length=32, null=True)  # 备注
     algorithm_monitor_status = models.BooleanField(default=False)  # 算法监测状态
+    algorithm_type = models.IntegerField(null=True)  # 算法类型：0--故障诊断，1--寿命预测
+    function_name = models.CharField(max_length=32, null=True)  # 算法函数名称
     config = models.ForeignKey(systemConfig.models.systemConfig, db_constraint=True, on_delete=models.CASCADE, null=True)  # 外键
 
 
@@ -29,9 +31,10 @@ class componentConfig(models.Model):
     remark = models.CharField(max_length=32, null=True)  # 备注
     component_status = models.BooleanField(max_length=32, null=False, default=0)  # 部件运行状态
     monitor_status = models.BooleanField(default=False)  # 监测状态
-    x_axis = models.CharField(max_length=65535, null=True)  # 横坐标
-    y_pre_axis = models.CharField(max_length=65535, null=True)  # 纵坐标1
-    y_last_axis = models.CharField(max_length=65535, null=True)  # 纵坐标2
+    # x_axis = models.CharField(max_length=65535, null=True)  # 横坐标
+    # y_pre_axis = models.CharField(max_length=65535, null=True)  # 纵坐标1
+    # y_last_axis = models.CharField(max_length=65535, null=True)  # 纵坐标2
+    current_life = models.IntegerField(null=True)  # 当前剩余寿命
     middle_value = models.IntegerField(default=40)  # 中期阈值
     last_value = models.IntegerField(default=20)  # 末期阈值
 
@@ -41,3 +44,17 @@ class componentSensor(models.Model):
     component = models.ForeignKey(componentConfig, db_constraint=True, on_delete=models.CASCADE)  # 外键
     # sensor_id = models.IntegerField(null=True)  # 传感器id
     sensor = models.ForeignKey(systemConfig.models.sensorConfig, db_constraint=True, on_delete=models.CASCADE, null=True)  # 外键
+
+
+
+# 部件附表：部件下的算法运行记录
+class componentAlgorithmRecord(models.Model):
+    component = models.ForeignKey(componentConfig, db_constraint=True, on_delete=models.CASCADE)  # 外键
+    component_name = models.CharField(max_length=32, null=True)  # 部件名称
+    algorithm_type = models.IntegerField(null=True) # 算法类型：0--故障诊断，1--寿命预测
+    sensor_name = models.CharField(max_length=32, null=True) # 传感器名称
+    date = models.CharField(max_length=32, null=True) # 运行日期
+    value1 = models.CharField(max_length=65535, null=True)
+    value2 = models.CharField(max_length=65535, null=True)
+    value3= models.CharField(max_length=65535, null=True)
+    value4 = models.IntegerField(null=True)
