@@ -44,8 +44,8 @@ class sensorConfig(models.Model):
 # 通道配置
 class channelConfig(models.Model):
     channel_name = models.CharField(null=True, max_length=32)  # 通道名称
-    channel_threshold = models.FloatField(null=True) # 通道阈值
-    overrun_times = models.IntegerField(null=True)  # 超限次数
+    # channel_threshold = models.FloatField(null=True) # 通道阈值
+    # overrun_times = models.IntegerField(null=True)  # 超限次数
     unit = models.CharField(max_length=32, null=True)  # 单位
     channel_field = models.CharField(max_length=32, null=True)  # 对应字段
     is_monitor = models.BooleanField(default=False)  # 是否监控

@@ -570,7 +570,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
             return JsonResponse(response)
         channels = models.channelConfig.objects.filter(sensor_id=sensor_id)
         for channel in channels:
-            if channel.channel_name == '' or channel.channel_threshold == '' or channel.overrun_times == '' or channel.unit == '' or channel.channel_field == '':
+            if channel.channel_name == '' or channel.unit == '' or channel.channel_field == '':
                 response = {
                     'status': 500,
                     'message': '请先配置通道'
@@ -700,7 +700,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
                     'sensor_name': sensor.sensor_name,
                     'channel_name': channel.channel_name,
                     'channel_field': channel.channel_field,
-                    'is_monitor': channel.is_monitor,
+                    # 'is_monitor': channel.is_monitor,
                     'unit': channel.unit,
                     'remark': channel.remark,
                 })
