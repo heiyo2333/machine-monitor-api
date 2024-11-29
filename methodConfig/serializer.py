@@ -1,7 +1,5 @@
 import os
-
 from rest_framework import serializers
-
 from MachineMonitorApi import settings
 
 
@@ -13,6 +11,9 @@ class algorithmListSerializer(serializers.Serializer):
     algorithm_channel_number = serializers.IntegerField(help_text="算法通道数")  # 算法通道数
     remark = serializers.CharField(help_text="备注", max_length=32, required=False)  # 备注
     algorithm_file = serializers.FileField(help_text="算法文件")  # 算法文件
+    algorithm_type = serializers.IntegerField(help_text="算法类型")  # 算法类型
+    function_name = serializers.CharField(help_text="算法函数名称")  # 算法函数名称
+    algorithm_monitor_status = serializers.CharField(help_text="算法运行状态")  # 算法运行状态
 
 
 # 算法配置-新增
@@ -22,6 +23,8 @@ class algorithmSerializer(serializers.Serializer):
     algorithm_file = serializers.CharField(help_text="算法文件")  # 算法文件
     algorithm_channel_matrix = serializers.CharField(help_text="算法输入通道矩阵")  # 算法文件
     remark = serializers.CharField(help_text="备注", max_length=32, required=False)  # 备注
+    algorithm_type = serializers.IntegerField(help_text="算法类型")  # 算法类型
+    function_name = serializers.CharField(help_text="算法函数名称")  # 算法函数名称
 
 
 # 算法配置-编辑
@@ -31,6 +34,8 @@ class editAlgorithmSerializer(serializers.Serializer):
     algorithm_channel_number = serializers.IntegerField(help_text="算法通道数")  # 算法通道数
     algorithm_file = serializers.CharField(help_text="算法文件")  # 算法文件
     remark = serializers.CharField(help_text="备注", max_length=32, required=False)  # 备注
+    algorithm_type = serializers.IntegerField(help_text="算法类型")  # 算法类型
+    function_name = serializers.CharField(help_text="算法函数名称")  # 算法函数名称
 
 
 # 算法配置-删除
@@ -46,14 +51,13 @@ class componentDeleteSerializer(serializers.Serializer):
 # 部件配置-显示
 class componentListSerializer(serializers.Serializer):
     id = serializers.IntegerField(help_text="部件id")
-    config_id = serializers.CharField(help_text="当前配置id", max_length=32)  # 机床编号
-    machine_code = serializers.CharField(help_text="机床编号", max_length=32)  # 机床编号
-    machine_name = serializers.CharField(help_text="机床名称", max_length=32)  # 机床名称
-    component_code = serializers.CharField(help_text="部件编号", max_length=32)  # 部件编号
-    component_name = serializers.CharField(help_text="部件名称", max_length=32)  # 部件名称
-    algorithm_id = serializers.CharField(help_text="算法id", max_length=32)  # 部件名称
-    algorithm_name = serializers.CharField(help_text="算法名称", max_length=32)  # 算法名称
-    algorithm_channel_data = serializers.CharField(help_text="算法输入通道", max_length=32)  # 算法输入通道
+    config_id = serializers.CharField(help_text="当前配置id")  # 机床编号
+    component_code = serializers.CharField(help_text="部件编号")  # 部件编号
+    component_name = serializers.CharField(help_text="部件名称")  # 部件名称
+    current_life = serializers.IntegerField(help_text="当前寿命") # 当前寿命
+    middle_value =  serializers.IntegerField(help_text="退化中期阈值")  # 退化中期阈值
+    last_value = serializers.IntegerField(help_text="退化末期阈值")  # 退化末期阈值
+    sensor_name = serializers.CharField(help_text="传感器名称")  # 传感器名称
     remark = serializers.CharField(help_text="备注", max_length=32, required=False)  # 备注
 
 
@@ -62,6 +66,9 @@ class editComponentSerializer(serializers.Serializer):
     id = serializers.IntegerField(help_text="部件id")
     config_id = serializers.CharField(help_text="系统配置id", max_length=32)  # 系统配置id
     component_name = serializers.CharField(help_text="部件名称", max_length=32)  # 部件名称
+    current_life = serializers.IntegerField(help_text="当前寿命")  # 当前寿命
+    middle_value = serializers.IntegerField(help_text="退化中期阈值")  # 退化中期阈值
+    last_value = serializers.IntegerField(help_text="退化末期阈值")  # 退化末期阈值
     remark = serializers.CharField(help_text="备注", max_length=32, required=False)  # 备注
     # 算法输入通道数据： [{"sensor_id":1,"channel_id":2},{"sensor_id":2,"channel_id":5},{"sensor_id":1,"channel_id":3}]
     sensor_id = serializers.CharField(help_text="传感器id矩阵")
@@ -71,6 +78,9 @@ class editComponentSerializer(serializers.Serializer):
 class addComponentSerializer(serializers.Serializer):
     config_id = serializers.CharField(help_text="机床id", max_length=32)  # 机床id
     component_name = serializers.CharField(help_text="部件名称", max_length=32)  # 部件名称
+    current_life = serializers.IntegerField(help_text="当前寿命",required=False)  # 当前寿命
+    middle_value = serializers.IntegerField(help_text="退化中期阈值")  # 退化中期阈值
+    last_value = serializers.IntegerField(help_text="退化末期阈值")  # 退化末期阈值
     remark = serializers.CharField(help_text="备注", max_length=32, required=False)  # 备注
     sensor_id = serializers.CharField(help_text="传感器id矩阵")
 

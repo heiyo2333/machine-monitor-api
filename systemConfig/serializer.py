@@ -140,8 +140,6 @@ class sensorAddserializer(serializers.Serializer):
     measurement = serializers.CharField(max_length=32, label="传感器数据库字段")
     remark = serializers.CharField(max_length=32, label="备注", required=False)  # 备注
     sensor_image = serializers.CharField(label="传感器图片")
-    # machine_name = serializers.CharField(label="机床名称", max_length=32)
-    # machine_code = serializers.CharField(label="机床编号", max_length=32)
     config_id = serializers.CharField(label="系统配置id", max_length=32)
     time_out = serializers.IntegerField(label="超时时间")
     receive_number = serializers.IntegerField(label="接收数据数量")
@@ -171,7 +169,7 @@ class sensorAddserializer(serializers.Serializer):
         sensor.save()
 
 
-class sensorUpdateserializer(serializers.Serializer):
+class sensorUpdateSerializer(serializers.Serializer):
     id = serializers.IntegerField(label="传感器编号")  # 传感器编号
     sensor_code = serializers.CharField(label="传感器编号", max_length=32)  # 传感器编号
     sensor_name = serializers.CharField(max_length=32, label="传感器名称")  # 传感器名称
@@ -179,8 +177,7 @@ class sensorUpdateserializer(serializers.Serializer):
     measurement = serializers.CharField(max_length=32, label="传感器数据库字段")
     remark = serializers.CharField(max_length=32, label="备注", required=False)  # 备注
     sensor_image = serializers.CharField(label="传感器图片")
-    # machine_name = serializers.CharField(label="机床名称", max_length=32)
-    # machine_code = serializers.CharField(label="机床编号", max_length=32)
+
     config_id = serializers.CharField(label="系统配置id", max_length=32)
     time_out = serializers.IntegerField(label="超时时间")
     receive_number = serializers.IntegerField(label="接收数据数量")
