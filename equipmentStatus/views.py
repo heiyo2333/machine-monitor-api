@@ -1,3 +1,4 @@
+import ast
 import importlib
 import os
 import sys
@@ -26,7 +27,6 @@ from systemConfig.models import sensorConfig
 from . import models, serializer
 from .models import thermalDiagram
 import threading
-
 
 
 def detect_sensor(client, ip, sensor_id, sensor_port, command_code, time_out, receive_number, measurement, field_list):
@@ -134,7 +134,8 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['get'])
     def algorithmStatusList(self, request):
-        config_id = self.request.query_params.get('config_id')
+        # config_id = self.request.query_params.get('config_id')
+        config_id = systemConfig.models.systemConfig.objects.get(is_apply=1).id
         algorithms = methodConfig.models.algorithmConfig.objects.filter(config_id=config_id)
         total = algorithms.count()
         result_list = []
@@ -173,7 +174,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['get'])
     def monitorOn(self, request):
         algorithm_id = self.request.query_params.get('id')
-        algorithm_status = methodConfig.models.algorithmConfig.objects.get(id=id)
+        algorithm_status = methodConfig.models.algorithmConfig.objects.get(id=algorithm_id)
         algorithm_status.algorithm_monitor_status = True
         algorithm_status.save()
         response = {
@@ -248,7 +249,6 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
         }
         return JsonResponse(response)
 
-
     # 部件-传感器下拉框
     @swagger_auto_schema(
         operation_summary='部件-传感器下拉框',
@@ -287,18 +287,23 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
         manual_parameters=[
             openapi.Parameter('config_id', openapi.IN_QUERY, description='配置id', type=openapi.TYPE_INTEGER,
                               required=True), ],
-        responses={200: openapi.Response('successful', serializer.sensorDataSerializer)},
+        responses={200: openapi.Response('successful', serializer.componentStatusSerializer)},
         tags=["equipment"],
     )
     @action(detail=False, methods=['get'])
     def componentStatus(self, request):
         config_id = self.request.query_params.get('config_id')
+        print(config_id)
         components = methodConfig.models.componentConfig.objects.filter(config_id=config_id)
+        count = 1
         result_list = []
         for component in components:
             status = methodConfig.models.componentAlgorithmRecord.objects.filter(component_id=component.id,
                                                                                  algorithm_type=0).order_by(
                 '-id').first()
+            if status is None:
+                continue
+            count += 1
             result_list.append({
                 'id': status.id,
                 'component_name': status.component_name,
@@ -308,7 +313,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
             })
         response_list = {
             'list': result_list,
-            'total': len(components)
+            'total': count
         }
         response = {
             'data': response_list,
@@ -330,7 +335,8 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['get'])
     def faultInformationList(self, request):
-        config_id = self.request.query_params.get('config_id')
+        # config_id = self.request.query_params.get('config_id')
+        config_id = systemConfig.models.systemConfig.objects.get(is_apply=1).id
         faults = models.faultInformation.objects.filter(config_id=config_id)
         total = faults.count()
         result_list = []
@@ -597,25 +603,25 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
             if machine_parameters.count() > 0:
                 machine_parameter = machine_parameters.last()
                 parameter = {
-                    'machine_t': machine_parameter.machine_t,
+                    # 'machine_t': machine_parameter.machine_t,
                     'machine_p': machine_parameter.machine_p,
                     'machine_a': machine_parameter.machine_a,
-                    'machine_t_unit': machine_parameter.machine_t_unit,
+                    # 'machine_t_unit': machine_parameter.machine_t_unit,
                     'machine_p_unit': machine_parameter.machine_p_unit,
                     'machine_a_unit': machine_parameter.machine_a_unit,
-                    'machine_t_max': machine_parameter.machine_t_max,
+                    # 'machine_t_max': machine_parameter.machine_t_max,
                     'machine_p_max': machine_parameter.machine_p_max,
                     'machine_a_max': machine_parameter.machine_a_max,
                 }
             else:
                 parameter = {
-                    'machine_t': 0,
+                    # 'machine_t': 0,
                     'machine_p': 0,
                     'machine_a': 0,
-                    'machine_t_unit': '',
+                    # 'machine_t_unit': '',
                     'machine_p_unit': '',
                     'machine_a_unit': '',
-                    'machine_t_max': 0,
+                    # 'machine_t_max': 0,
                     'machine_p_max': 0,
                     'machine_a_max': 0,
                 }
@@ -652,9 +658,9 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
                                                                                algorithm_type=1).order_by('-id').first()
             data = {
                 'id': life.id,
-                'x_axis': life.value1,
-                'y_pre_axis': life.value2,
-                'y_last_axis': life.value3,
+                'x_axis': ast.literal_eval(life.value1),
+                'y_pre_axis': ast.literal_eval(life.value2),
+                'y_last_axis': ast.literal_eval(life.value3),
                 'middle_value': c.middle_value,
                 'last_value': c.last_value,
             }
@@ -665,8 +671,9 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
             }
         else:
             response = {
-                'status': 500,
-                'message': '暂无剩余寿命曲线数据！'
+                'status': 200,
+                'message': '暂无剩余寿命曲线数据！',
+                "data": []
             }
         return JsonResponse(response)
 
@@ -687,11 +694,12 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
                                                                         algorithm_monitor_status=True)
 
         for algorithm in algorithms:
+            print("11111")
 
             name = algorithm.function_name
             algorithm_path = algorithm.algorithm_file.path
             # 已知模块地址和函数名
-            module_path = f'media/{algorithm_path}'  # 模块文件的路径
+            module_path = algorithm_path  # 模块文件的路径
             function_name = name  # 函数名
 
             # 获取模块文件名（不包括.py扩展名）
@@ -715,17 +723,19 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
             except AttributeError:
                 raise AttributeError(f"The function {function_name} does not exist in the module {module_name}")
 
-
             channels = methodConfig.models.algorithmChannel.objects.filter(algorithm_id=algorithm.id)
             args1 = ()
             for channel in channels:
                 args1 += (channel.channel_id,)
             s_id = 0
             sensors = systemConfig.models.channelConfig.objects.filter(id__in=args1)
+
+            # 有问题--待修改
             for sensor in sensors:
                 if "三相加速度" in systemConfig.models.sensorConfig.objects.get(id=sensor.sensor_id).sensor_name:
                     s_id = sensor.sensor_id
             c = methodConfig.models.componentSensor.objects.filter(sensor_id=s_id).first()
+
             component = methodConfig.models.componentConfig.objects.get(id=c.component_id)
             sensor_name = systemConfig.models.sensorConfig.objects.get(id=s_id).sensor_name
             config_id = component.config_id
@@ -736,7 +746,8 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
                 if operational_status == 2:
                     count = 0
                     a = methodConfig.models.componentAlgorithmRecord.objects.filter(component_id=component.id,
-                                                                                  algorithm_type=0).order_by('-id')[:15]
+                                                                                    algorithm_type=0).order_by('-id')[
+                        :15]
                     for i in a:
                         if i.value2 == 2:
                             count += 1
@@ -744,11 +755,12 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
                         operational_status = 3
 
                 methodConfig.models.componentAlgorithmRecord.objects.create(component_id=component.id,
-                                                                          component_name=component.component_name,
-                                                                          algorithm_type=algorithm.algorithm_type,
-                                                                          date=datetime.now().date(),
-                                                                          sensor_name=sensor_name, value1=overrun_times,
-                                                                          value2=operational_status)
+                                                                            component_name=component.component_name,
+                                                                            algorithm_type=algorithm.algorithm_type,
+                                                                            date=datetime.now().date(),
+                                                                            sensor_name=sensor_name,
+                                                                            value1=overrun_times,
+                                                                            value2=operational_status)
 
                 if operational_status == 2:
                     equipmentStatus.models.faultInformation.objects.create(config_id=config_id,
@@ -769,15 +781,16 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
                                                                            fault_type='故障', fault_status='损坏')
 
             else:
-                x_axis, y_pre_axis, y_last_axis, current_life = algorithm_function(*args1)
+                x_axis, y_pre_axis, y_last_axis, current_life, used_day = algorithm_function(*args1)
                 methodConfig.models.componentAlgorithmRecord.objects.create(component_id=component.id,
-                                                                          component_name=component.component_name,
-                                                                          algorithm_type=algorithm.algorithm_type,
-                                                                          date=datetime.now().date(),
-                                                                          sensor_name=sensor_name, value1=x_axis,
-                                                                          value2=y_pre_axis, value3=y_last_axis,
-                                                                          value4=current_life)
-                methodConfig.models.componentConfig.objects.filter(id =component.id).update(current_life = current_life)
+                                                                            component_name=component.component_name,
+                                                                            algorithm_type=algorithm.algorithm_type,
+                                                                            date=datetime.now().date(),
+                                                                            sensor_name=sensor_name, value1=x_axis,
+                                                                            value2=y_pre_axis, value3=y_last_axis,
+                                                                            value4=current_life,
+                                                                            value5=used_day)
+                methodConfig.models.componentConfig.objects.filter(id=component.id).update(current_life=current_life)
 
                 if component.middle_value >= current_life > component.last_value:
                     equipmentStatus.models.faultInformation.objects.create(config_id=config_id,

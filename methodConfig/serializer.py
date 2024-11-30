@@ -54,8 +54,8 @@ class componentListSerializer(serializers.Serializer):
     config_id = serializers.CharField(help_text="当前配置id")  # 机床编号
     component_code = serializers.CharField(help_text="部件编号")  # 部件编号
     component_name = serializers.CharField(help_text="部件名称")  # 部件名称
-    current_life = serializers.IntegerField(help_text="当前寿命") # 当前寿命
-    middle_value =  serializers.IntegerField(help_text="退化中期阈值")  # 退化中期阈值
+    current_life = serializers.IntegerField(help_text="当前寿命")  # 当前寿命
+    middle_value = serializers.IntegerField(help_text="退化中期阈值")  # 退化中期阈值
     last_value = serializers.IntegerField(help_text="退化末期阈值")  # 退化末期阈值
     sensor_name = serializers.CharField(help_text="传感器名称")  # 传感器名称
     remark = serializers.CharField(help_text="备注", max_length=32, required=False)  # 备注
@@ -78,7 +78,7 @@ class editComponentSerializer(serializers.Serializer):
 class addComponentSerializer(serializers.Serializer):
     config_id = serializers.CharField(help_text="机床id", max_length=32)  # 机床id
     component_name = serializers.CharField(help_text="部件名称", max_length=32)  # 部件名称
-    current_life = serializers.IntegerField(help_text="当前寿命",required=False)  # 当前寿命
+    current_life = serializers.IntegerField(help_text="当前寿命")  # 当前寿命
     middle_value = serializers.IntegerField(help_text="退化中期阈值")  # 退化中期阈值
     last_value = serializers.IntegerField(help_text="退化末期阈值")  # 退化末期阈值
     remark = serializers.CharField(help_text="备注", max_length=32, required=False)  # 备注
@@ -106,7 +106,7 @@ class uploadFileSerializer(serializers.Serializer):
                 destination.write(chunk)
 
         # 构造返回的文件 URL，并将路径中的反斜杠替换为正斜杠
-        file_url = os.path.normpath(os.path.join(settings.MEDIA_URL, 'UploadImage', file.name)).replace('\\', '/')
+        file_url = os.path.normpath(os.path.join(settings.MEDIA_URL, 'UploadFile', file.name)).replace('\\', '/')
 
         return file_url
 

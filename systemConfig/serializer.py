@@ -21,8 +21,8 @@ class ConfigAddSerializer(serializers.Serializer):
     machine_port = serializers.IntegerField(help_text="端口号")
     # tool_number = serializers.IntegerField(help_text="刀位数量")
     database_name = serializers.CharField(help_text="时序数据库名称", max_length=32)
-    alarm_data_delay_positive = serializers.IntegerField(help_text="正延时")
-    alarm_data_delay_negative = serializers.IntegerField(help_text="负延时")
+    alarm_data_delay_positive = serializers.IntegerField(help_text="正延时", required=False)
+    alarm_data_delay_negative = serializers.IntegerField(help_text="负延时", required=False)
     machine_image = serializers.CharField(help_text="机床图片")
 
 
@@ -38,8 +38,8 @@ class ConfigUpdateSerializer(serializers.Serializer):
     machine_port = serializers.IntegerField(help_text="端口号")
     # tool_number = serializers.IntegerField(help_text="刀位数量")
     database_name = serializers.CharField(help_text="时序数据库名称", max_length=32)
-    alarm_data_delay_positive = serializers.IntegerField(help_text="正延时")
-    alarm_data_delay_negative = serializers.IntegerField(help_text="负延时")
+    alarm_data_delay_positive = serializers.IntegerField(help_text="正延时", required=False)
+    alarm_data_delay_negative = serializers.IntegerField(help_text="负延时", required=False)
     machine_image = serializers.CharField(help_text="机床图片")
 
     def save(self):

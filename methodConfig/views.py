@@ -35,7 +35,6 @@ def get_local_ip():
     return local_ip
 
 
-
 def get_initials(name):
     # 将算法名称转换为拼音
     pinyin_list = lazy_pinyin(name)
@@ -46,7 +45,7 @@ def get_initials(name):
     return initials
 
 
-def algorithm_code_rule(algorithm_name,algorithm_type):
+def algorithm_code_rule(algorithm_name, algorithm_type):
     prefix = f'SF-{get_initials(algorithm_name)}-{algorithm_type}'
     # 获取已存在的最大编码值
     max_existing_number = models.algorithmConfig.objects.filter(algorithm_code__startswith=prefix).aggregate(
@@ -59,13 +58,13 @@ def algorithm_code_rule(algorithm_name,algorithm_type):
     else:
         new_number = '01'
     # 构建最终编码
-    algorithm_code = f'{prefix}{new_number}'
+    algorithm_code = f'{prefix}-{new_number}'
 
     return algorithm_code
 
 
 def component_code_rule(component_name):
-    prefix = f'BJ-{get_initials(component_name)}-'
+    prefix = f'BJ-{get_initials(component_name)}'
     # 获取已存在的最大编码值
     max_existing_number = models.componentConfig.objects.filter(component_code__startswith=prefix).aggregate(
         Max('component_code'))
@@ -77,7 +76,7 @@ def component_code_rule(component_name):
     else:
         new_number = '01'
     # 构建最终编码
-    component_code = f'{prefix}{new_number}'
+    component_code = f'{prefix}-{new_number}'
 
     return component_code
 
@@ -182,7 +181,6 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
 
         ip_address = f"http://{get_local_ip()}:8000"
 
-
         # 通道信息列表：algorithm_channels_list
 
         result_list = []
@@ -257,17 +255,17 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
 
         algorithm_channel_matrix = ast.literal_eval(algorithm_channel_str)
         config_id = systemConfig.models.systemConfig.objects.get(is_apply=1).id
-        algorithm_code = algorithm_code_rule(algorithm_name,algorithm_type)
+        algorithm_code = algorithm_code_rule(algorithm_name, algorithm_type)
         new_algorithm = models.algorithmConfig.objects.create(algorithm_code=algorithm_code,
                                                               algorithm_name=algorithm_name,
                                                               algorithm_channel_number=algorithm_channel_number,
                                                               remark=remark,
                                                               algorithm_type=algorithm_type,
-                                                              function_name = function_name,
-                                                              config_id=config_id,)
+                                                              function_name=function_name,
+                                                              config_id=config_id, )
         # 将对应的通道信息放入附表
-        for channael_id in algorithm_channel_matrix:
-            models.algorithmChannel.objects.create(algorithm=new_algorithm, channel_id=channael_id)
+        for channel_id in algorithm_channel_matrix:
+            models.algorithmChannel.objects.create(algorithm=new_algorithm, channel_id=channel_id)
         # 从URL下载文件内容
         response = requests.get(algorithm_file_path)
         file_content = response.content
@@ -277,8 +275,6 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         algorithm = algorithmConfig.objects.get(algorithm_code=algorithm_code)
         # 更新algorithm_file字段
         algorithm.algorithm_file.save(f'{algorithm_code}.py', file_obj, save=True)
-
-
 
         response = {
             'status': 200,
@@ -337,7 +333,7 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
                 }
                 return JsonResponse(response)
             else:
-                algorithm_code = algorithm_code_rule(algorithm_name,algorithm_type)
+                algorithm_code = algorithm_code_rule(algorithm_name, algorithm_type)
 
         algorithm.algorithm_name = algorithm_name
         algorithm.algorithm_code = algorithm_code
@@ -508,7 +504,7 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         else:
             components = models.componentConfig.objects.filter(config_id=config_id)
             total = components.count()
-        print('total',total)
+        print('total', total)
         result_list = []
 
         for component in components:
@@ -526,8 +522,8 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
             # sensor_id_list = str(sensor_id_list).replace(" ", "")
             # sensor_names_list = str(sensor_names_list).replace(" ", "")
             sensor_list = {
-                            "sensor_id": sensor_id_list,
-                            "sensor_names": sensor_names_list,}
+                "sensor_id": sensor_id_list,
+                "sensor_names": sensor_names_list, }
             result_list.append(
                 {
                     'id': component.id,
@@ -611,9 +607,9 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         component_name = self.request.data.get('component_name')
         remark = self.request.data.get('remark')
         sensor_id_str = self.request.data.get('sensor_id')
-        current_life= self.request.data.get('current_life')
-        middle_value= self.request.data.get('middle_value')
-        last_value= self.request.data.get('last_value')
+        current_life = self.request.data.get('current_life')
+        middle_value = self.request.data.get('middle_value')
+        last_value = self.request.data.get('last_value')
 
         machine = systemConfig.models.systemConfig.objects.get(id=config_id)
         component = models.componentConfig.objects.get(id=component_id)
@@ -643,17 +639,17 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
             sensor_id_matrix_old.append(component_sensor.sensor_id)
         # 等会儿还原回来
         # 判断传感器是否已经绑定了别的部件；判断传感器状态是否正常
-        flag, response = check_sensor(sensor_id_matrix_new)
-        if not flag:
-            return JsonResponse(response)
+        if sensor_id_matrix_new !=  sensor_id_matrix_old:
+            flag, response = check_sensor(sensor_id_matrix_new)
+            if not flag:
+                return JsonResponse(response)
 
         sensor_to_add, sensor_to_delete = matrix_diff(sensor_id_matrix_old, sensor_id_matrix_new)
-
         component.component_code = component_code
         component.component_name = component_name
-        component.current_life =current_life
-        component.middle_value =middle_value
-        component.last_value =last_value
+        component.current_life = current_life
+        component.middle_value = middle_value
+        component.last_value = last_value
         component.remark = remark
         component.save()
 
@@ -953,20 +949,6 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         database_name = system.database_name
         client = InfluxDBClient(host='localhost', port=8086, username='admin', password='admin',
                                 database=database_name)
-        today = datetime.utcnow().date()
-        today_str = today.strftime('%Y-%m-%d')
-        if system.influx_clean_date is None:
-            influx_clean_flag = 1
-        else:
-            if system.influx_clean_date < today_str:
-                influx_clean_flag = 1
-            else:
-                influx_clean_flag = 0
-        if influx_clean_flag == 1:
-            system.influx_clean_date = today_str
-            system.save()
-            threading.Thread(target=influxDataToCsv, args=(client, today_str)).start()
-            # influxDataToCsv(client)
         measurement = sensor.measurement
         unit = channel.unit
 
@@ -1018,6 +1000,32 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
             'message': '最新信号获取成功！',
         }
         return JsonResponse(response)
+
+    # 保存CSV文件
+    @swagger_auto_schema(
+        operation_summary='保存CSV文件',
+        responses={200: 'CSV文件保存成功！'},
+        tags=['signal']
+    )
+    @action(detail=False, methods=['get'])
+    def dataToCsv(self, request):
+        system = systemConfig.models.systemConfig.objects.get(is_apply=1)
+        client = InfluxDBClient(host='localhost', port=8086, username='admin', password='admin',
+                                database=system.database_name)
+        today = datetime.utcnow().date()
+        today_str = today.strftime('%Y-%m-%d')
+        if system.influx_clean_date is None:
+            influx_clean_flag = 1
+        else:
+            if system.influx_clean_date < today_str:
+                influx_clean_flag = 1
+            else:
+                influx_clean_flag = 0
+        if influx_clean_flag == 1:
+            system.influx_clean_date = today_str
+            system.save()
+            threading.Thread(target=influxDataToCsv, args=(client, today_str)).start()
+            # influxDataToCsv(client)
 
 
 def influxDataToCsv(client, today_str):

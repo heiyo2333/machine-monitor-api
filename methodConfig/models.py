@@ -13,14 +13,16 @@ class algorithmConfig(models.Model):
     algorithm_monitor_status = models.BooleanField(default=False)  # 算法监测状态
     algorithm_type = models.IntegerField(null=True)  # 算法类型：0--故障诊断，1--寿命预测
     function_name = models.CharField(max_length=32, null=True)  # 算法函数名称
-    config = models.ForeignKey(systemConfig.models.systemConfig, db_constraint=True, on_delete=models.CASCADE, null=True)  # 外键
+    config = models.ForeignKey(systemConfig.models.systemConfig, db_constraint=True, on_delete=models.CASCADE,
+                               null=True)  # 外键
 
 
 # 算法附表：算法下的部件
 class algorithmChannel(models.Model):
     algorithm = models.ForeignKey(algorithmConfig, db_constraint=True, on_delete=models.CASCADE)  # 外键
     # channel_id = models.IntegerField(null=True)  # 算法编号
-    channel = models.ForeignKey(systemConfig.models.channelConfig, db_constraint=True, on_delete=models.CASCADE, null=True)  # 外键
+    channel = models.ForeignKey(systemConfig.models.channelConfig, db_constraint=True, on_delete=models.CASCADE,
+                                null=True)  # 外键
 
 
 # 部件配置主表
@@ -34,7 +36,7 @@ class componentConfig(models.Model):
     # x_axis = models.CharField(max_length=65535, null=True)  # 横坐标
     # y_pre_axis = models.CharField(max_length=65535, null=True)  # 纵坐标1
     # y_last_axis = models.CharField(max_length=65535, null=True)  # 纵坐标2
-    current_life = models.IntegerField(null=True)  # 当前剩余寿命
+    current_life = models.IntegerField(default=100)  # 当前剩余寿命
     middle_value = models.IntegerField(default=40)  # 中期阈值
     last_value = models.IntegerField(default=20)  # 末期阈值
 
@@ -43,18 +45,19 @@ class componentConfig(models.Model):
 class componentSensor(models.Model):
     component = models.ForeignKey(componentConfig, db_constraint=True, on_delete=models.CASCADE)  # 外键
     # sensor_id = models.IntegerField(null=True)  # 传感器id
-    sensor = models.ForeignKey(systemConfig.models.sensorConfig, db_constraint=True, on_delete=models.CASCADE, null=True)  # 外键
-
+    sensor = models.ForeignKey(systemConfig.models.sensorConfig, db_constraint=True, on_delete=models.CASCADE,
+                               null=True)  # 外键
 
 
 # 部件附表：部件下的算法运行记录
 class componentAlgorithmRecord(models.Model):
     component = models.ForeignKey(componentConfig, db_constraint=True, on_delete=models.CASCADE)  # 外键
     component_name = models.CharField(max_length=32, null=True)  # 部件名称
-    algorithm_type = models.IntegerField(null=True) # 算法类型：0--故障诊断，1--寿命预测
-    sensor_name = models.CharField(max_length=32, null=True) # 传感器名称
-    date = models.CharField(max_length=32, null=True) # 运行日期
-    value1 = models.CharField(max_length=65535, null=True)
-    value2 = models.CharField(max_length=65535, null=True)
-    value3= models.CharField(max_length=65535, null=True)
+    algorithm_type = models.IntegerField(null=True)  # 算法类型：0--故障诊断，1--寿命预测
+    sensor_name = models.CharField(max_length=32, null=True)  # 传感器名称
+    date = models.CharField(max_length=32, null=True)  # 运行日期
+    value1 = models.CharField(max_length=999999, null=True)
+    value2 = models.CharField(max_length=999999, null=True)
+    value3 = models.CharField(max_length=999999, null=True)
     value4 = models.IntegerField(null=True)
+    value5 = models.IntegerField(null=True)
