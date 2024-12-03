@@ -5,8 +5,8 @@ import systemConfig
 
 
 def SP_threshold_detection(c1_id, c2_id, c3_id, c4_id, c5_id, c6_id):
-    # date = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
-    date = "2024-10-21"
+    date = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
+    # date = "2024-10-21"
     sensors = systemConfig.models.channelConfig.objects.filter(id__in=[c1_id, c2_id, c3_id, c4_id, c5_id, c6_id])
     s1 = None
     s2 = None
@@ -19,9 +19,9 @@ def SP_threshold_detection(c1_id, c2_id, c3_id, c4_id, c5_id, c6_id):
     cur = systemConfig.models.sensorConfig.objects.get(id=s1).measurement
     vib = systemConfig.models.sensorConfig.objects.get(id=s2).measurement
 
-    c1 = 1
-    c2 = 4
-    p = 3
+    c1 = 4
+    c2 = 7
+    p = 2.2
 
     csv_1_path = f'media/Sensor/SensorData/{cur}_{date}.csv'
     csv_2_path = f'media/Sensor/SensorData/{vib}_{date}.csv'

@@ -337,7 +337,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
     def faultInformationList(self, request):
         # config_id = self.request.query_params.get('config_id')
         config_id = systemConfig.models.systemConfig.objects.get(is_apply=1).id
-        faults = models.faultInformation.objects.filter(config_id=config_id)
+        faults = models.faultInformation.objects.filter(config_id=config_id).order_by('-id')
         total = faults.count()
         result_list = []
         for x in faults:
@@ -694,7 +694,6 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
                                                                         algorithm_monitor_status=True)
 
         for algorithm in algorithms:
-            print("11111")
 
             name = algorithm.function_name
             algorithm_path = algorithm.algorithm_file.path
@@ -727,17 +726,22 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
             args1 = ()
             for channel in channels:
                 args1 += (channel.channel_id,)
-            s_id = 0
             sensors = systemConfig.models.channelConfig.objects.filter(id__in=args1)
-
-            # 有问题--待修改
-            for sensor in sensors:
-                if "三相加速度" in systemConfig.models.sensorConfig.objects.get(id=sensor.sensor_id).sensor_name:
-                    s_id = sensor.sensor_id
-            c = methodConfig.models.componentSensor.objects.filter(sensor_id=s_id).first()
+            s1 = None
+            s2 = None
+            for i in sensors:
+                s = i.sensor_id
+                if "电流" in systemConfig.models.sensorConfig.objects.get(id=s).sensor_name:
+                    s1 = s
+                elif "三相加速度" in systemConfig.models.sensorConfig.objects.get(id=s).sensor_name:
+                    s2 = s
+            if s2:
+                c = methodConfig.models.componentSensor.objects.get(sensor_id=s2)
+            else:
+                c = methodConfig.models.componentSensor.objects.get(sensor_id=s1)
 
             component = methodConfig.models.componentConfig.objects.get(id=c.component_id)
-            sensor_name = systemConfig.models.sensorConfig.objects.get(id=s_id).sensor_name
+            sensor_name = systemConfig.models.sensorConfig.objects.get(id=c.sensor_id).sensor_name
             config_id = component.config_id
             machine = systemConfig.models.systemConfig.objects.get(id=config_id)
 
@@ -769,7 +773,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
                                                                            warning_time=datetime.now().date(),
                                                                            component_id=component.id,
                                                                            component_name=component.component_name,
-                                                                           fault_type='故障', fault_status='异常')
+                                                                           fault_type='0', fault_status='异常')
 
                 elif operational_status == 3:
                     equipmentStatus.models.faultInformation.objects.create(config_id=config_id,
@@ -778,7 +782,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
                                                                            warning_time=datetime.now().date(),
                                                                            component_id=component.id,
                                                                            component_name=component.component_name,
-                                                                           fault_type='故障', fault_status='损坏')
+                                                                           fault_type='0', fault_status='损坏')
 
             else:
                 x_axis, y_pre_axis, y_last_axis, current_life, used_day = algorithm_function(*args1)
@@ -799,7 +803,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
                                                                            warning_time=datetime.now().date(),
                                                                            component_id=component.id,
                                                                            component_name=component.component_name,
-                                                                           fault_type='寿命', fault_status='中期')
+                                                                           fault_type='1', fault_status='中期')
 
                 elif current_life <= component.last_value:
                     equipmentStatus.models.faultInformation.objects.create(config_id=config_id,
@@ -808,7 +812,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
                                                                            warning_time=datetime.now().date(),
                                                                            component_id=component.id,
                                                                            component_name=component.component_name,
-                                                                           fault_type='寿命', fault_status='末期')
+                                                                           fault_type='1', fault_status='末期')
 
         response = {
             'status': 200,

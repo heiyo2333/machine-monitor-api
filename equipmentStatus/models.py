@@ -2,7 +2,7 @@ from django.db import models
 from django.utils import timezone
 
 
-# 警告及故障代码
+# 报警记录
 class faultInformation(models.Model):
     config_id = models.IntegerField(null=True)  # 机床配置id
     machine_code = models.CharField(max_length=32, null=True)  # 机床编号
@@ -11,7 +11,7 @@ class faultInformation(models.Model):
     component_id = models.IntegerField(null=True)  # 部件id
     component_name = models.CharField(max_length=32, null=True)  # 部件名称
     fault_type = models.CharField(max_length=32, null=False)  # 报警类型
-    fault_status  = models.CharField(max_length=32, null=False)  # 报警代码
+    fault_status = models.CharField(max_length=32, null=False)  # 报警代码
 
 
 # 加工热力图
@@ -36,4 +36,3 @@ class machineParameter(models.Model):
     machine_t_max = models.FloatField(max_length=32, null=False)  # 温度最大值
     machine_p_max = models.FloatField(max_length=32, null=False)  # 功率最大值
     machine_a_max = models.FloatField(max_length=32, null=False)  # 加速度最大值
-
