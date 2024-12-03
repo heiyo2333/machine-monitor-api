@@ -448,8 +448,8 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
 
         for m in range(1, int(channel_number) + 1):
             models.channelConfig.objects.create(
-                sensor_name=new_sensor.sensor_name,
-                sensor_code=new_sensor.sensor_code,
+                # sensor_name=new_sensor.sensor_name,
+                # sensor_code=new_sensor.sensor_code,
                 sensor=new_sensor
             )
         response = {
@@ -470,7 +470,7 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['post'])
     def sensorUpdate(self, request):
-        serializer = sensorUpdateserializer(data=request.data)
+        serializer = sensorUpdateSerializer(data=request.data)
         if serializer.is_valid():
             id = serializer.validated_data['id']
             sensor_code = serializer.validated_data['sensor_code']
@@ -541,6 +541,20 @@ class SystemConfigViewSet(viewsets.GenericViewSet):
         g = serializer.sensorDeleteserializer(data=request.data)
         g.is_valid()
         sensor_id = g.validated_data.get('id')
+        if not models.sensorConfig.objects.filter(id=sensor_id).exists():
+            response = {
+                'status': 500,
+                'message': '该传感器不存在，请刷新页面'
+            }
+            return JsonResponse(response)
+        sensor = models.sensorConfig.objects.get(id=sensor_id)
+        if sensor.sensor_status:
+            response = {
+                'status': 500,
+                'message': '请先关闭该传感器'
+            }
+            return JsonResponse(response)
+
         models.sensorConfig.objects.filter(id=sensor_id).delete()
         response = {
             'status': 200,
