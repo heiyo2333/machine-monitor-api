@@ -1,30 +1,38 @@
-from datetime import datetime
 import numpy as np
 import systemConfig
 import methodConfig
 
 
 def SP_remaining_life(c1_id, c2_id, c3_id, c4_id, c5_id, c6_id):
-    x_axis = list(range(0, 5001, 50))
+    global value_d
 
-    y_axis = [100, 100, 100, 100, 100, 100, 100, 100, 99, 99, 99, 99, 99, 98, 98, 98, 97, 97, 97, 96, 96, 96, 95, 95,
-              94, 94, 93, 93, 92, 92, 91, 90, 90, 89, 88, 88, 87, 86, 86, 85, 84, 83, 82, 82, 81, 80, 79, 78, 77, 76,
-              75, 74, 73, 72, 71, 70, 69, 68, 66, 65, 64, 63, 62, 60, 59, 58, 56, 55, 54, 52, 51, 50, 48, 47, 45, 44,
-              42, 41, 39, 38, 36, 34, 33, 31, 29, 28, 26, 24, 23, 21, 19, 17, 15, 14, 12, 10, 8, 6, 4, 2, 0]
+    def SP_normal(x):
+        a = 100.064466697955
+        b = -2.41360515263883e-05
+        c = -3.99517278969472e-06
+        if 0 <= x <= 5000:
+            return round(a + b * x + c * x ** 2)
 
     def function1(a):
         aa = 0.5
         bb = np.log(4) / 100
-        return aa * np.exp(bb * (100 - a))/2
+        return (aa * np.exp(bb * (100 - a)))/2
 
     def function2(b):
-        return 5 ** ((100 - b) / 100)/2
+        return (5 ** ((100 - b) / 100))/2
 
     def find_closest_index(lst, start_index, target_value):
-        filtered_lst = lst[start_index + 1:]
-        relative_closest_index = min(range(len(filtered_lst)), key=lambda i: abs(filtered_lst[i] - target_value))
-        target_index = start_index + 1 + relative_closest_index
-        return target_index
+        # 创建一个新列表，包含从start_index + 1开始的元素及其索引
+        filtered_lst_with_index = [(i, val) for i, val in enumerate(lst[start_index + 1:], start=start_index + 1)]
+        # 找到与目标值最接近的元素及其索引
+        closest_item = min(filtered_lst_with_index, key=lambda x: (abs(x[1] - target_value), x[0]))
+        # 返回最接近元素的索引
+        return closest_item[0]
+
+    x_axis_1 = list(range(0, 5001))
+    y_axis_1 = []
+    for i in x_axis_1:
+        y_axis_1.append(SP_normal(i))
 
     sensor_id = systemConfig.models.channelConfig.objects.get(id=c1_id).sensor_id
     component_id = methodConfig.models.componentSensor.objects.get(sensor_id=sensor_id).component_id
@@ -33,41 +41,57 @@ def SP_remaining_life(c1_id, c2_id, c3_id, c4_id, c5_id, c6_id):
                                                                           algorithm_type=1).order_by('-id').first()
     record2 = methodConfig.models.componentAlgorithmRecord.objects.filter(component_id=component_id,
 
-                                                                    algorithm_type=0).order_by('-id').first()
-    t_index = find_closest_index(lst=y_axis, start_index=-1, target_value=current_life)
-    if record1 and record1.value4 == current_life:
-        date1 = datetime.strptime(record1.date, "%Y-%m-%d").date()
-        d_gap = datetime.now().date() - date1
-        date_gap = int(d_gap.days)
-        used_day = record1.value5 + date_gap
-    else:
-        used_day = x_axis[t_index] + 1
-
-    if record2 is None:
-        status = 0
-    else:
-        status = int(record2.value2)
-
-    value_1 = y_axis[round(used_day // 50)]
-
-    if status == 0:
-        value_d = value_1
-    elif status == 1:
-        value_d = value_1 - function1(current_life)
-    elif status == 2:
-        value_d = value_1 - function2(current_life)
-
-    middle = find_closest_index(lst=y_axis, start_index=t_index, target_value=value_d)
+                                                                          algorithm_type=0).order_by('-id').first()
 
     y_pre_axis = []
     y_last_axis = []
 
-    for index, value in enumerate(y_axis):
-        if index < middle + 1:
-            y_pre_axis.append([index, value])
-        if index >= middle:
-            y_last_axis.append([index, value])
+    if record1 and record1.value4 == current_life:
+        # 有历史记录
+        used_day = record1.value5
 
-    life = y_axis[middle]
+        if record2 is None:
+            status = 0
+        else:
+            status = int(record2.value2)
+
+        value_1 = record1.value4
+
+        if status == 0:
+            value_d = value_1
+        elif status == 1:
+            value_d = value_1 - function1(current_life)
+        elif status == 2:
+            value_d = value_1 - function2(current_life)
+        elif status == 3:
+            value_d = 5
+
+        middle = find_closest_index(lst=y_axis_1, start_index=used_day, target_value=value_d)
+        used_day = middle
+        x1 = len(eval(record1.value2))
+        x2 = len(y_axis_1) - middle
+        print(x1, x2)
+        x_axis = list(range(0, x1 + x2))
+        y_pre_axis = eval(record1.value2)
+        y_pre_axis.append([x1, y_axis_1[middle]])
+        y_last_axis.append([x1, y_axis_1[middle]])
+        count = x1
+        for index, value in enumerate(y_axis_1):
+            if index >= middle:
+                y_last_axis.append([count + 1, value])
+                count += 1
+    else:
+        # 新部件或者第一次
+        t_index = find_closest_index(lst=y_axis_1, start_index=-1, target_value=current_life)
+        used_day = x_axis_1[t_index] + 1
+        middle = used_day
+        x_axis = x_axis_1
+        for index, value in enumerate(y_axis_1):
+            if index < middle + 1:
+                y_pre_axis.append([index, value])
+            if index >= middle:
+                y_last_axis.append([index, value])
+
+    life = y_axis_1[middle]
 
     return x_axis, y_pre_axis, y_last_axis, life, used_day

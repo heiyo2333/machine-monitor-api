@@ -21,7 +21,7 @@ class algorithmSerializer(serializers.Serializer):
     algorithm_name = serializers.CharField(help_text="算法名称", max_length=32)  # 算法名称
     algorithm_channel_number = serializers.IntegerField(help_text="算法通道数")  # 算法通道数
     algorithm_file = serializers.CharField(help_text="算法文件")  # 算法文件
-    algorithm_channel_matrix = serializers.CharField(help_text="算法输入通道矩阵")  # 算法文件
+    algorithm_channel_matrix = serializers.CharField(help_text="算法输入通道矩阵")  # 算法输入通道矩阵
     remark = serializers.CharField(help_text="备注", max_length=32, required=False)  # 备注
     algorithm_type = serializers.IntegerField(help_text="算法类型")  # 算法类型
     function_name = serializers.CharField(help_text="算法函数名称")  # 算法函数名称

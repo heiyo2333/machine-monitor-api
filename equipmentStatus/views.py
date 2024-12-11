@@ -293,7 +293,6 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['get'])
     def componentStatus(self, request):
         config_id = self.request.query_params.get('config_id')
-        print(config_id)
         components = methodConfig.models.componentConfig.objects.filter(config_id=config_id)
         count = 1
         result_list = []
@@ -390,7 +389,6 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
             else:
                 # 该日期的加工时间数据还没有-->寻找数据
                 query = Q(date__exact=date_str) & Q(sensor_id=sensor_id)
-                # print(query)
                 if systemConfig.models.influxDataConfig.objects.filter(query).exists():
                     influx_object = systemConfig.models.influxDataConfig.objects.get(query)
                     file_path = influx_object.influx_file.path
@@ -402,7 +400,6 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
                         result = np.sqrt(data['Current_U'] ** 2 + data['Current_V'] ** 2 + data['Current_W'] ** 2)
                         # 如果需要将结果添加为新列
                         data['Current_Magnitude'] = result
-                        # print(data['Current_Magnitude'])
 
                         # 标记分段（时间间隔大于3秒的作为新段）
                         time_diff = data['time'].diff()

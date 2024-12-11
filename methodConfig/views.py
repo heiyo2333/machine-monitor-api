@@ -177,7 +177,7 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         last = current * pageSize
         config_id = systemConfig.models.systemConfig.objects.get(is_apply=1).id
         algorithms = models.algorithmConfig.objects.filter(config_id=config_id)[first:last]
-        total = algorithms.count()
+        total = models.algorithmConfig.objects.filter(config_id=config_id).count()
 
         ip_address = f"http://{get_local_ip()}:8000"
 
@@ -356,24 +356,33 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
             query = Q(channel_id=channel_id) & Q(algorithm_id=algorithm.id)
             models.algorithmChannel.objects.filter(query).delete()
 
-        file_path = algorithm.algorithm_file.path
-        if os.path.exists(file_path):
-            os.remove(file_path)
+        path1 = algorithm.algorithm_file.path
+        path2 = algorithm_file_path
+        # 获取两个路径中的文件名
+        filename1 = os.path.basename(path1)
+        filename2 = os.path.basename(path2)
 
-        # 从URL下载文件内容
-        response = requests.get(algorithm_file_path)
-        file_content = response.content
-        # 将内容转换为ContentFile对象
-        file_obj = ContentFile(file_content, name=f'{algorithm_code}.py')
+        # 比较文件名是否相同
+        if filename1 == filename2:
+            response = {
+                'status': 200,
+                'message': '编辑算法配置成功'
+            }
+        else:
+            os.remove(path1)
+            # 从URL下载文件内容
+            response = requests.get(algorithm_file_path)
+            file_content = response.content
+            # 将内容转换为ContentFile对象
+            file_obj = ContentFile(file_content, name=f'{algorithm_code}.py')
 
-        # algorithm = algorithmConfig.objects.get(algorithm_code=algorithm_code)
-        # 更新algorithm_file字段
-        algorithm.algorithm_file.save(f'{algorithm_code}.py', file_obj, save=True)
+            # 更新algorithm_file字段
+            algorithm.algorithm_file.save(f'{algorithm_code}.py', file_obj, save=True)
 
-        response = {
-            'status': 200,
-            'message': '编辑算法配置成功'
-        }
+            response = {
+                'status': 200,
+                'message': '编辑算法配置成功'
+            }
 
         return JsonResponse(response)
 
@@ -504,7 +513,6 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
         else:
             components = models.componentConfig.objects.filter(config_id=config_id)
             total = components.count()
-        print('total', total)
         result_list = []
 
         for component in components:
