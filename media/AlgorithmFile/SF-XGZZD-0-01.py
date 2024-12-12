@@ -2,7 +2,7 @@ import os
 from datetime import datetime, timedelta
 import pandas as pd
 import systemConfig
-
+from dateutil import parser
 
 def XM_threshold_detection(c1_id, c2_id, c3_id, c4_id, c5_id, c6_id):
     date = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
@@ -25,6 +25,7 @@ def XM_threshold_detection(c1_id, c2_id, c3_id, c4_id, c5_id, c6_id):
 
     csv_1_path = f'media/Sensor/SensorData/{cur}_{date}.csv'
     csv_2_path = f'media/Sensor/SensorData/{vib}_{date}.csv'
+    print(csv_2_path)
 
     # 检查文件是否存在
     file_exists_1 = os.path.exists(csv_1_path)
@@ -87,9 +88,9 @@ def XM_threshold_detection(c1_id, c2_id, c3_id, c4_id, c5_id, c6_id):
                     list_b.append(data1[end_index])
 
             # 将字符串时间转换为datetime对象
-            data3_time = [datetime.strptime(time, "%Y-%m-%dT%H:%M:%S.%fZ") for time in data3]
-            a_time = [datetime.strptime(time, "%Y-%m-%dT%H:%M:%S.%fZ") for time in list_a]
-            b_time = [datetime.strptime(time, "%Y-%m-%dT%H:%M:%S.%fZ") for time in list_b]
+            data3_time = [parser.parse(time) for time in data3]
+            a_time = [parser.parse(time) for time in list_a]
+            b_time = [parser.parse(time) for time in list_b]
 
             # 创建一个空列表来保存符合条件的data1中的时间
             filtered_data1 = []

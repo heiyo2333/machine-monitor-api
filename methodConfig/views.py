@@ -497,8 +497,8 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['get'])
     def componentDisplay(self, request):
-        config_id = self.request.query_params.get('id')
-        machine = systemConfig.models.systemConfig.objects.get(id=config_id)
+        machine = systemConfig.models.systemConfig.objects.get(is_apply=1)
+        config_id = machine.id
         pageSize = self.request.query_params.get('pageSize')
         current = self.request.query_params.get('current')
         if pageSize is not None and current is not None:
@@ -1022,6 +1022,7 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
                                 database=system.database_name)
         today = datetime.utcnow().date()
         today_str = today.strftime('%Y-%m-%d')
+        print(today_str)
         if system.influx_clean_date is None:
             influx_clean_flag = 1
         else:
@@ -1034,6 +1035,11 @@ class MethodConfigViewSet(viewsets.GenericViewSet):
             system.save()
             threading.Thread(target=influxDataToCsv, args=(client, today_str)).start()
             # influxDataToCsv(client)
+        response = {
+            'status': 200,
+            'message': '成功',
+        }
+        return JsonResponse(response)
 
 
 def influxDataToCsv(client, today_str):

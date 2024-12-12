@@ -292,9 +292,11 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['get'])
     def componentStatus(self, request):
-        config_id = self.request.query_params.get('config_id')
+        # config_id = self.request.query_params.get('is_apply=1')
+        config_id = systemConfig.models.systemConfig.objects.get(is_apply=1).id
+        print("config_id", config_id)
         components = methodConfig.models.componentConfig.objects.filter(config_id=config_id)
-        count = 1
+        count = 0
         result_list = []
         for component in components:
             status = methodConfig.models.componentAlgorithmRecord.objects.filter(component_id=component.id,
@@ -389,46 +391,48 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
             else:
                 # 该日期的加工时间数据还没有-->寻找数据
                 query = Q(date__exact=date_str) & Q(sensor_id=sensor_id)
+                print(query)
                 if systemConfig.models.influxDataConfig.objects.filter(query).exists():
-                    influx_object = systemConfig.models.influxDataConfig.objects.get(query)
-                    file_path = influx_object.influx_file.path
-                    if os.path.exists(file_path):
-                        data = pd.read_csv(file_path)
-                        # 转换 'time' 列为 datetime 格式
-                        data['time'] = pd.to_datetime(data['time'])
-                        # 求平方之和再开方
-                        result = np.sqrt(data['Current_U'] ** 2 + data['Current_V'] ** 2 + data['Current_W'] ** 2)
-                        # 如果需要将结果添加为新列
-                        data['Current_Magnitude'] = result
+                    influx_objects = systemConfig.models.influxDataConfig.objects.filter(query)
+                    for influx_object in influx_objects:
+                        file_path = influx_object.influx_file.path
+                        if os.path.exists(file_path):
+                            data = pd.read_csv(file_path)
+                            # 转换 'time' 列为 datetime 格式
+                            data['time'] = pd.to_datetime(data['time'])
+                            # 求平方之和再开方
+                            result = np.sqrt(data['Current_U'] ** 2 + data['Current_V'] ** 2 + data['Current_W'] ** 2)
+                            # 如果需要将结果添加为新列
+                            data['Current_Magnitude'] = result
 
-                        # 标记分段（时间间隔大于3秒的作为新段）
-                        time_diff = data['time'].diff()
-                        gap_threshold = timedelta(seconds=3)
-                        data['segment'] = (time_diff > gap_threshold).cumsum()
+                            # 标记分段（时间间隔大于3秒的作为新段）
+                            time_diff = data['time'].diff()
+                            gap_threshold = timedelta(seconds=3)
+                            data['segment'] = (time_diff > gap_threshold).cumsum()
 
-                        # 筛选 Current_Magnitude > 3 的数据
-                        filtered_data = data[data['Current_Magnitude'] > 3].copy()
+                            # 筛选 Current_Magnitude > 3 的数据
+                            filtered_data = data[data['Current_Magnitude'] > 3].copy()
 
-                        # # 计算每段的时间差
-                        # filtered_data['time_diff'] = filtered_data['time'].diff()
-                        # filtered_data.loc[
-                        #     filtered_data['segment'] != filtered_data['segment'].shift(), 'time_diff'] = pd.NaT
+                            # # 计算每段的时间差
+                            # filtered_data['time_diff'] = filtered_data['time'].diff()
+                            # filtered_data.loc[
+                            #     filtered_data['segment'] != filtered_data['segment'].shift(), 'time_diff'] = pd.NaT
 
-                        # 修正代码以避免 SettingWithCopyWarning
-                        filtered_data.loc[:, 'time_diff'] = filtered_data['time'].diff()
-                        filtered_data.loc[
-                            filtered_data['segment'] != filtered_data['segment'].shift(), 'time_diff'] = pd.NaT
+                            # 修正代码以避免 SettingWithCopyWarning
+                            filtered_data.loc[:, 'time_diff'] = filtered_data['time'].diff()
+                            filtered_data.loc[
+                                filtered_data['segment'] != filtered_data['segment'].shift(), 'time_diff'] = pd.NaT
 
-                        # 计算总时长（秒数）
-                        total_duration = filtered_data['time_diff'].dt.total_seconds().sum()
+                            # 计算总时长（秒数）
+                            total_duration = filtered_data['time_diff'].dt.total_seconds().sum()
 
-                        # 输出总时长
-                        print(f"总有效时长为 {total_duration / 3600:.2f} H")
-                        models.thermalDiagram.objects.create(config_id=config_id,
-                                                             machine_code=machine.machine_code,
-                                                             machine_name=machine.machine_name,
-                                                             machine_process_date=date_str,
-                                                             machine_running_time=round(total_duration / 3600, 2))
+                            # 输出总时长
+                            print(f"总有效时长为 {total_duration / 3600:.2f} H")
+                            models.thermalDiagram.objects.create(config_id=config_id,
+                                                                 machine_code=machine.machine_code,
+                                                                 machine_name=machine.machine_name,
+                                                                 machine_process_date=date_str,
+                                                                 machine_running_time=round(total_duration / 3600, 2))
         response = {
             'status': 200,
             'message': '机床加工时间填写成功'
