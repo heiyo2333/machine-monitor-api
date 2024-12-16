@@ -27,6 +27,7 @@ from systemConfig.models import sensorConfig
 from . import models, serializer
 from .models import thermalDiagram
 import threading
+from django.db.models import Case, When, Value, CharField
 
 
 def detect_sensor(client, ip, sensor_id, sensor_port, command_code, time_out, receive_number, measurement, field_list):
@@ -136,7 +137,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
     def algorithmStatusList(self, request):
         # config_id = self.request.query_params.get('config_id')
         config_id = systemConfig.models.systemConfig.objects.get(is_apply=1).id
-        algorithms = methodConfig.models.algorithmConfig.objects.filter(config_id=config_id)
+        algorithms = methodConfig.models.algorithmConfig.objects.filter(config_id=config_id).order_by('-id')
         total = algorithms.count()
         result_list = []
         for algorithm in algorithms:
@@ -294,7 +295,6 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
     def componentStatus(self, request):
         # config_id = self.request.query_params.get('is_apply=1')
         config_id = systemConfig.models.systemConfig.objects.get(is_apply=1).id
-        print("config_id", config_id)
         components = methodConfig.models.componentConfig.objects.filter(config_id=config_id)
         count = 0
         result_list = []
@@ -338,7 +338,17 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
     def faultInformationList(self, request):
         # config_id = self.request.query_params.get('config_id')
         config_id = systemConfig.models.systemConfig.objects.get(is_apply=1).id
-        faults = models.faultInformation.objects.filter(config_id=config_id).order_by('-id')
+
+        # 定义排序规则
+        order_by_warning_time = Case(
+            When(fault_status='损坏', then=Value('1')),
+            When(fault_status='异常', then=Value('2')),
+            When(fault_status='末期', then=Value('3')),
+            default=Value('4'),
+            output_field=CharField()
+        )
+
+        faults = models.faultInformation.objects.filter(config_id=config_id).order_by('-warning_time', order_by_warning_time)
         total = faults.count()
         result_list = []
         for x in faults:
@@ -785,6 +795,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
                                                                            component_name=component.component_name,
                                                                            fault_type='0', fault_status='损坏')
 
+
             else:
                 x_axis, y_pre_axis, y_last_axis, current_life, used_day = algorithm_function(*args1)
                 methodConfig.models.componentAlgorithmRecord.objects.create(component_id=component.id,
@@ -797,23 +808,43 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
                                                                             value5=used_day)
                 methodConfig.models.componentConfig.objects.filter(id=component.id).update(current_life=current_life)
 
-                if component.middle_value >= current_life > component.last_value:
-                    equipmentStatus.models.faultInformation.objects.create(config_id=config_id,
-                                                                           machine_code=machine.machine_code,
-                                                                           machine_name=machine.machine_name,
-                                                                           warning_time=datetime.now().date(),
-                                                                           component_id=component.id,
-                                                                           component_name=component.component_name,
-                                                                           fault_type='1', fault_status='中期')
+                # if component.middle_value >= current_life > component.last_value:
+                #     equipmentStatus.models.faultInformation.objects.create(config_id=config_id,
+                #                                                            machine_code=machine.machine_code,
+                #                                                            machine_name=machine.machine_name,
+                #                                                            warning_time=datetime.now().date(),
+                #                                                            component_id=component.id,
+                #                                                            component_name=component.component_name,
+                #                                                            fault_type='1', fault_status='中期')
 
-                elif current_life <= component.last_value:
-                    equipmentStatus.models.faultInformation.objects.create(config_id=config_id,
-                                                                           machine_code=machine.machine_code,
-                                                                           machine_name=machine.machine_name,
-                                                                           warning_time=datetime.now().date(),
-                                                                           component_id=component.id,
-                                                                           component_name=component.component_name,
-                                                                           fault_type='1', fault_status='末期')
+                if current_life <= component.last_value:
+
+                    record = equipmentStatus.models.faultInformation.objects.filter(config_id=config_id,
+                                                                                    component_id=component.id,
+                                                                                    fault_type='1',
+                                                                                    fault_status='末期').order_by('-id')
+
+                    if record.count() > 0:
+                        today = datetime.now().date()
+                        w_time = datetime.strptime(record.first().warning_time, "%Y-%m-%d").date()
+                        t_time = w_time + timedelta(days=90)
+                        if today > t_time:
+                            equipmentStatus.models.faultInformation.objects.create(config_id=config_id,
+                                                                                   machine_code=machine.machine_code,
+                                                                                   machine_name=machine.machine_name,
+                                                                                   warning_time=datetime.now().date(),
+                                                                                   component_id=component.id,
+                                                                                   component_name=component.component_name,
+                                                                                   fault_type='1', fault_status='末期')
+
+                    else:
+                        equipmentStatus.models.faultInformation.objects.create(config_id=config_id,
+                                                                               machine_code=machine.machine_code,
+                                                                               machine_name=machine.machine_name,
+                                                                               warning_time=datetime.now().date(),
+                                                                               component_id=component.id,
+                                                                               component_name=component.component_name,
+                                                                               fault_type='1', fault_status='末期')
 
         response = {
             'status': 200,
