@@ -376,7 +376,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
         }
         return JsonResponse(response)
 
-    # 机床加工时间填写
+    # 定时：机床加工时间填写
     @swagger_auto_schema(
         operation_summary='机床加工时间填写',
         request_body=serializer.addThermalDiagramSerializer,
@@ -464,7 +464,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
 
         config_id = request.query_params.get('config_id')
         # 查询所有相关数据
-        data = thermalDiagram.objects.filter(config_id=config_id)
+        data = thermalDiagram.objects.filter(config_id=config_id).order_by('-machine_process_date')
 
         # 初始化热力图数据结构
         heatmap_data = {}
@@ -485,7 +485,7 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
             if key not in heatmap_data:
                 heatmap_data[key] = 0
             heatmap_data[key] += entry.machine_running_time
-
+        print('heatmap_data', heatmap_data)
         # 获取当前日期和12周前的日期
         current_date = datetime.now()
         start_date = current_date - timedelta(weeks=12)
@@ -493,15 +493,16 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
         # 构建热力图数据
         final_data = []
         current_week = current_date.isocalendar()[1]
+        print('current_week', current_week)
         for i in range(12):
             week_data = []
             for j in range(7):
-                day_of_week = (j + 6) % 7  # 将0-6调整为周日（6）到周六（5）
-                key = (current_week - i, day_of_week)
+                # day_of_week = (j + 6) % 7  # 将0-6调整为周日（6）到周六（5）
+                key = (current_week - i, j)
                 week_day_data = heatmap_data.get(key, 0)
                 week_data.append([11 - i, 6 - j, week_day_data])
             final_data.extend(week_data)
-
+        # print('final_data', final_data)
         result = {
             'config_id': config_id,
             'data': final_data,
@@ -598,12 +599,12 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
 
     # 机床参数查询
     @swagger_auto_schema(
-        operation_summary='机床参数查询',
+        operation_summary='部件状况',
         # 获取参数
         manual_parameters=[
             openapi.Parameter('config_id', openapi.IN_QUERY, description='配置id', type=openapi.TYPE_INTEGER,
                               required=True), ],
-        responses={200: '机床参数查询成功'},
+        responses={200: '部件状况查询成功'},
         tags=["equipment"],
     )
     @action(detail=False, methods=['get'])
@@ -611,6 +612,63 @@ class EquipmentStatusViewSet(viewsets.GenericViewSet):
         config_id = self.request.query_params.get('config_id')
         if systemConfig.models.systemConfig.objects.filter(id=config_id).exists():
             machine_parameters = models.machineParameter.objects.filter(config_id=config_id)
+            if machine_parameters.count() > 0:
+                machine_parameter = machine_parameters.last()
+                parameter = {
+                    # 'machine_t': machine_parameter.machine_t,
+                    'machine_p': machine_parameter.machine_p,
+                    'machine_a': machine_parameter.machine_a,
+                    # 'machine_t_unit': machine_parameter.machine_t_unit,
+                    'machine_p_unit': machine_parameter.machine_p_unit,
+                    'machine_a_unit': machine_parameter.machine_a_unit,
+                    # 'machine_t_max': machine_parameter.machine_t_max,
+                    'machine_p_max': machine_parameter.machine_p_max,
+                    'machine_a_max': machine_parameter.machine_a_max,
+                }
+            else:
+                parameter = {
+                    # 'machine_t': 0,
+                    'machine_p': 0,
+                    'machine_a': 0,
+                    # 'machine_t_unit': '',
+                    'machine_p_unit': '',
+                    'machine_a_unit': '',
+                    # 'machine_t_max': 0,
+                    'machine_p_max': 0,
+                    'machine_a_max': 0,
+                }
+            response = {
+                'data': parameter,
+                'status': 200,
+                'message': '机床参数查询成功'
+            }
+            return JsonResponse(response)
+        else:
+            response = {
+                'status': 500,
+                'message': '未找到该机床信息'
+            }
+            return JsonResponse(response)
+
+
+    # 机床参数查询
+    @swagger_auto_schema(
+        operation_summary='定时更新部件状况',
+        responses={200: '机床参数查询成功'},
+        tags=["equipment"],
+    )
+    @action(detail=False, methods=['post'])
+    def updateParameter(self, request):
+        if systemConfig.models.systemConfig.objects.filter(is_apply=1).exists():
+            system = systemConfig.models.systemConfig.objects.get(is_apply=1)
+            sensor_query = Q(config_id=system.id) & Q(sensor_code='sp_current')
+            sensor_vib = systemConfig.models.sensorConfig.objects.get(Q(config_id=system.id) & Q(sensor_code='sp_current'))
+            sensor_cur = systemConfig.models.sensorConfig.objects.get(Q(config_id=system.id) & Q(sensor_code='sp_current'))
+            measurement = sensor.measurement
+            unit = channel.unit
+            client = InfluxDBClient(host='localhost', port=8086, username='admin', password='admin',
+                                    database=system.database_name)
+            machine_parameters = models.machineParameter.objects.filter(config_id=system.id)
             if machine_parameters.count() > 0:
                 machine_parameter = machine_parameters.last()
                 parameter = {
